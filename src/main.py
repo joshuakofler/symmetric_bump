@@ -1,31 +1,41 @@
 #%%
 # import modules
 import numpy as np
-import importlib
-from matplotlib import pyplot as plt
 
 # own libs
-import constants as const
+import constants
 import mesh
+import cell
+import calculate_artificial_dissipation as aD
+import importlib
 
-# reload constant lib
-importlib.reload(const)
+import calculate_residual as cR
+import calculate_flux as cF
+
+
+# import all global variables from globals 
+from globals import *
+from constants import *
+
 importlib.reload(mesh)
-
-
-from variables import F, R, ndS
-# initialize the mesh
-mesh.init()
-
-
+importlib.reload(aD)
+importlib.reload(cell)
+importlib.reload(constants)
+importlib.reload(cF)
 
 
 
 
+#mesh.plot_mesh()
+
+cell.initialize_domain()
+
+cF.update_flux()
+
+aD.calculate_coefficient()
 
 
-
-
+aD.update_artificial_dissipation()
 
 
 def get_inlet_pressure(atmospheric_pressure, heat_capacity_ratio, mach_number):
@@ -57,8 +67,3 @@ def get_inlet_temperature(atmospheric_temperature, heat_capacity_ratio, mach_num
         float: Inlet temperature.
     """
     return atmospheric_temperature * (1 + (heat_capacity_ratio - 1) / 2 * mach_number**2)
-
-mesh.plot_mesh()
-
-# plot the mesh
-#mesh.plot_mesh()

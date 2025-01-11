@@ -12,15 +12,18 @@ BUMP_COEFFICIENT = 0.08
 
 # Number of grid points
 NUM_CELLS_X = int(6)  # For debugging purposes, use values like 6, 12, 24, etc.
-NUM_CELLS_Y = int(5)
+NUM_CELLS_Y = int(2)
 
 # Number of faces in the grid
 NUM_FACES_X = int(NUM_CELLS_X + 1)
 NUM_FACES_Y = int(NUM_CELLS_Y + 1)
 
+# Gas constant
+GAS_CONSTANT = 287.05   # J / kgK
+
 # Specific heat capacities (commented placeholders)
-# SPECIFIC_HEAT_CV = ...
-# SPECIFIC_HEAT_CP = ...
+SPECIFIC_HEAT_CV = 718      # J / kgK
+SPECIFIC_HEAT_CP = 1005     # J / kgK
 
 # Heat capacity ratio
 HEAT_CAPACITY_RATIO = 1.4
@@ -33,6 +36,13 @@ ATMOSPHERIC_PRESSURE = 101300       # Pressure in Pascals
 ATMOSPHERIC_TEMPERATURE = 288       # Temperature in Kelvin
 
 # Runge-Kutta scheme
-RK_ALPHA_2 = 1/4
-RK_ALPHA_3 = 1/3
-RK_ALPHA_4 = 1/2
+# RK_ALPHA_2 = 1/4
+# RK_ALPHA_3 = 1/3
+# RK_ALPHA_4 = 1/2
+RK_ALPHA = [1/4, 1/3, 1/2, 1]
+
+# Artificial Dissipation
+# The coefficient k(2) is typically of order 1
+ARTIFICIAL_DISSIPATION_KAPPA_2 = 1
+# The coefficient k(4) should be small
+ARTIFICIAL_DISSIPATION_KAPPA_4 = 1/256

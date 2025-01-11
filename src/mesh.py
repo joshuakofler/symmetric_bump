@@ -1,112 +1,24 @@
 #%%
-# Initialize the mesh for the computational domain. And provide access to the cell_areas and faces.
+"""
+Initialize the mesh for the computational domain.
+
+This module sets up the mesh structure by calculating the coordinates of cell centers and faces
+in both the x- and y-directions. It also computes the varying bump height in the domain, adjusts the
+spacing to account for this geometry, and calculates the area of each computational cell.
+
+
+Notes:
+    - The grid alignment and spacing are adjusted based on the bump height (cell_y0 and face_y0).
+    - The function modifies global variables directly and does not return any value.
+"""
 
 # import modules
+from globals import *
 import numpy as np
-import importlib
 from matplotlib import pyplot as plt
 
-import constants as const
-from variables import cell_dx, cell_x_coords, cell_y0, cell_dy, cell_y_coords, face_x_coords, face_y0, face_dy, face_y_coords, cell_area, ndS
 
-# reload lib
-importlib.reload(const)
-
-def init():
-    """
-    Initialize the mesh for the computational domain.
-
-    This function sets up the mesh structure by calculating the coordinates of cell centers and faces
-    in both the x- and y-directions. It also computes the varying bump height in the domain, adjusts the
-    spacing to account for this geometry, and calculates the area of each computational cell.
-
-    Returns:
-        None: The function directly updates the global variables.
-
-    Notes:
-        - The grid alignment and spacing are adjusted based on the bump height (cell_y0 and face_y0).
-        - The function modifies global variables directly and does not return any value.
-    """
-    
-    global cell_dx, cell_x_coords, cell_y0, cell_dy, cell_y_coords
-    global face_x_coords, face_y0, face_dy, face_y_coords
-    global cell_area
-    #######################################################################
-    # Initialize the grid cell coordinates
-    #######################################################################
-
-    # Calculate grid spacing in the x-direction
-    # cell_dx is the spacing between the centers (or faces) of the cells in the x-direction
-    # It is constant throughout the entire domain
-    cell_dx = const.CHANNEL_LENGTH / const.NUM_CELLS_X
-
-    # Generate the x-coordinates for the centers of the cells
-    # This creates an array of evenly spaced coordinates for the cell centers
-    cell_x_coords = np.linspace(cell_dx / 2, const.CHANNEL_LENGTH - cell_dx / 2, const.NUM_CELLS_X)
-
-    # Shift the x-coordinates by L to align with the desired coordinate system
-    cell_x_coords -= const.DOMAIN_LENGTH
-
-    # Compute the bump height at the center of each cell
-    # The bump height, cell_y0, is determined using the get_y0 function
-    cell_y0 = _calculate_bump_height(cell_x_coords)
-
-    # Calculate the grid spacing in the y-direction for each x-coordinate
-    # cell_dy is determined by dividing the height above the bump by the number of cells
-    # This ensures the spacing varies appropriately with the domain geometry
-    cell_dy = (const.CHANNEL_HEIGHT - cell_y0) / const.NUM_CELLS_Y
-
-    # Generate the y-coordinates for the centers of the cells in the y-direction
-    # The coordinates are offset to ensure the cell centers align correctly in the domain
-    cell_y_coords = np.linspace(cell_y0 + cell_dy / 2, const.CHANNEL_HEIGHT - cell_dy / 2, const.NUM_CELLS_Y)
-
-    # Transpose the face_y_coords array so that indexing is consistent
-    # After transposing, face_y_coords(x, index_y) will match the expected structure:
-    # the first index corresponds to the x-position, and the second to the y-position
-    cell_y_coords = np.transpose(cell_y_coords)
-
-    #######################################################################
-    # Initialize the grid face coordinates
-    #######################################################################
-
-    # Generate the x-coordinates for the faces of the cells
-    # This creates evenly spaced coordinates for the vertical faces of the cells
-    face_x_coords = np.linspace(0, const.CHANNEL_LENGTH, const.NUM_FACES_X)
-
-    # Shift the x-coordinates by L to align with the desired coordinate system
-    # This ensures the face coordinates match the shifted cell coordinates
-    face_x_coords -= const.DOMAIN_LENGTH
-
-    # Compute the bump height at the faces of each x-cell
-    # Similar to cell_y0, face_y0 adjusts for the domain geometry at the cell faces
-    face_y0 = _calculate_bump_height(face_x_coords)
-
-    # Calculate the grid spacing in the y-direction (at x-coordinates of the faces)
-    # The spacing varies depending on the bump height, face_y0
-    face_dy = (const.CHANNEL_HEIGHT - face_y0) / const.NUM_CELLS_Y
-
-    # Generate the y-coordinates for the faces in the y-direction
-    # This creates a 2D array of face y-coordinates that varies with x and y
-    face_y_coords = np.linspace(face_y0, const.CHANNEL_HEIGHT, const.NUM_FACES_Y)
-
-    # Transpose the face_y_coords array so that indexing is consistent
-    # After transposing, face_y_coords(x, index_y) will match the expected structure:
-    # the first index corresponds to the x-position, and the second to the y-position
-    face_y_coords = np.transpose(face_y_coords)
-
-    #######################################################################
-    # Calculate Grid Parameters
-    #######################################################################
-
-    # Calculate the area of each cell in the grid
-    _calculate_cell_area()
-
-    # Calculate the normal-face vector (n * dS) for all cells
-    _calculate_ndS()
-
-    # Return None as the function modifies global variables directly
-    return None    
-
+# define the functions
 def get_point_coordinates(cell_x_index, cell_y_index):
     """
     Return the cell coordinates based on the cell indices.
@@ -120,14 +32,14 @@ def get_point_coordinates(cell_x_index, cell_y_index):
     """
     return np.array([cell_x_coords[cell_x_index], cell_y_coords[cell_x_index, cell_y_index]])
 
-def get_face_coordinates(cell_x_index, cell_y_index, direction):
+def get_vertex_coordinates(cell_x_index, cell_y_index, vertex):
     """
     Return the coordinates of a cell edge point based on the specified direction.
 
     Args:
         cell_x_index (int): Index of the cell along the x-axis.
         cell_y_index (int): Index of the cell along the y-axis.
-        direction (str): Direction of the point ("SW", "NW", "NE", "SE") or ("A", "B", "C", "D").
+        vertex (str): Direction of the point ("SW", "NW", "NE", "SE") or ("A", "B", "C", "D").
 
     Returns:
         np.ndarray: [x-coordinate, y-coordinate] of the cell edge point.
@@ -136,7 +48,7 @@ def get_face_coordinates(cell_x_index, cell_y_index, direction):
         ValueError: If the direction argument is invalid.
     """
     try:
-        match direction:
+        match vertex:
             case ("SW" | "A"):  # Southwest or direction A
                 return np.array([face_x_coords[cell_x_index + 1], face_y_coords[cell_x_index + 1, cell_y_index]])
             case ("NW" | "B"):  # Northwest or direction B
@@ -150,6 +62,9 @@ def get_face_coordinates(cell_x_index, cell_y_index, direction):
     except ValueError as error:
         print(f"Error: {error}")
         return None
+
+def get_cell_dy(cell_x_index):
+    return cell_dy[cell_x_index]
 
 def get_cell_area(cell_x_index, cell_y_index):
     """
@@ -191,18 +106,18 @@ def get_normal_vector(cell_x_index, cell_y_index, face):
         match face:
             case "S":
                 # Get the coordinates of points A and D
-                [x_point_a, y_point_a] = get_face_coordinates(cell_x_index, cell_y_index, 'A')
-                [x_point_d, y_point_d] = get_face_coordinates(cell_x_index, cell_y_index, 'D')
+                [x_point_a, y_point_a] = get_vertex_coordinates(cell_x_index, cell_y_index, 'A')
+                [x_point_d, y_point_d] = get_vertex_coordinates(cell_x_index, cell_y_index, 'D')
                 
                 # Calculate the vector components (yA - yD, -(xA - xD))
                 vector = np.array([
                     (y_point_a - y_point_d),  # x-component
                     -(x_point_a - x_point_d)  # y-component
                 ])
-            case "W":
+            case "E":
                 # Get the coordinates of points A and B
-                [x_point_a, y_point_a] = get_face_coordinates(cell_x_index, cell_y_index, 'A')
-                [x_point_b, y_point_b] = get_face_coordinates(cell_x_index, cell_y_index, 'B')
+                [x_point_a, y_point_a] = get_vertex_coordinates(cell_x_index, cell_y_index, 'A')
+                [x_point_b, y_point_b] = get_vertex_coordinates(cell_x_index, cell_y_index, 'B')
 
                 # Calculate the vector components (yB - yA, -(xB - xA))
                 vector = np.array([
@@ -211,18 +126,18 @@ def get_normal_vector(cell_x_index, cell_y_index, face):
                 ])
             case "N":
                 # Get the coordinates of points B and C
-                [x_point_b, y_point_b] = get_face_coordinates(cell_x_index, cell_y_index, 'B')
-                [x_point_c, y_point_c] = get_face_coordinates(cell_x_index, cell_y_index, 'C')
+                [x_point_b, y_point_b] = get_vertex_coordinates(cell_x_index, cell_y_index, 'B')
+                [x_point_c, y_point_c] = get_vertex_coordinates(cell_x_index, cell_y_index, 'C')
                 
                 # Calculate the vector components (yC - yB, -(xC - xB))
                 vector = np.array([
                     (y_point_c - y_point_b),  # x-component
                     -(x_point_c - x_point_b)  # y-component
                 ])
-            case "E":            
+            case "W":            
                 # Get the coordinates of points C and D
-                [x_point_c, y_point_c] = get_face_coordinates(cell_x_index, cell_y_index, 'C')
-                [x_point_d, y_point_d] = get_face_coordinates(cell_x_index, cell_y_index, 'D')
+                [x_point_c, y_point_c] = get_vertex_coordinates(cell_x_index, cell_y_index, 'C')
+                [x_point_d, y_point_d] = get_vertex_coordinates(cell_x_index, cell_y_index, 'D')
                 
                 # Calculate the vector components (yD - yC, -(xD - xC))
                 vector = np.array([
@@ -266,9 +181,9 @@ def _calculate_bump_height(x):
 
     # Compute y0 using np.where
     y0 = np.where(
-        (x < 0) | (x > const.DOMAIN_LENGTH),  # Condition: x < 0 or x > const.L
+        (x < 0) | (x > DOMAIN_LENGTH),  # Condition: x < 0 or x > L
         0,                        # Value when condition is True: y0 will be set to 0
-        const.BUMP_COEFFICIENT * x * (1 - x / const.DOMAIN_LENGTH)  # Value when condition is False: computed as a function of x
+        BUMP_COEFFICIENT * x * (1 - x / DOMAIN_LENGTH)  # Value when condition is False: computed as a function of x
     )
     
     # Return the computed y0 values
@@ -296,22 +211,20 @@ def _calculate_cell_area():
         - This function iterates over all cells in the grid defined by `NUM_CELLS_X` and `NUM_CELLS_Y`.
     """
 
-    global cell_area
-
     try:
-        for cell_x_index, cell_y_index in np.ndindex(const.NUM_CELLS_X, const.NUM_CELLS_Y):
+        for cell_x_index, cell_y_index in np.ndindex(NUM_CELLS_X, NUM_CELLS_Y):
             # Retrieve the edge points of the cell
-            [x_point_a, y_point_a] = get_face_coordinates(cell_x_index, cell_y_index, "A")  # Southwest
-            [x_point_b, y_point_b] = get_face_coordinates(cell_x_index, cell_y_index, "B")  # Northwest
-            [x_point_c, y_point_c] = get_face_coordinates(cell_x_index, cell_y_index, "C")  # Northeast
-            [x_point_d, y_point_d] = get_face_coordinates(cell_x_index, cell_y_index, "D")  # Southeast
+            [x_point_b, y_point_b] = get_vertex_coordinates(cell_x_index, cell_y_index, "B")  # Northwest
+            [x_point_c, y_point_c] = get_vertex_coordinates(cell_x_index, cell_y_index, "C")  # Northeast
+            [x_point_d, y_point_d] = get_vertex_coordinates(cell_x_index, cell_y_index, "D")  # Southeast
+            [x_point_a, y_point_a] = get_vertex_coordinates(cell_x_index, cell_y_index, "A")  # Southwest
 
             # Calculate the area using the determinant formula
             cell_area[cell_x_index, cell_y_index] = 0.5 * ((x_point_c - x_point_a) * (y_point_d - y_point_b) - (x_point_d - x_point_b) * (y_point_c - y_point_a))
 
             # Check if the area is negative
             if cell_area[cell_x_index, cell_y_index] < 0:
-                raise ValueError(f"Negative cell area calculated: {cell_area[i,j]} for cell ({cell_x_index}, {cell_y_index})")
+                raise ValueError(f"Negative cell area calculated: {cell_area[cell_x_index, cell_y_index]} for cell ({cell_x_index}, {cell_y_index})")
 
     except ValueError as e:
         print(f"Error: {e}")
@@ -342,17 +255,15 @@ def _calculate_ndS():
         - The face-normal vector is calculated for each face using its endpoints.
         - The function loops over all cells in the grid and calculates ndS for each face.
     """
-
-    global ndS  # Declare ndS as global so it can be updated within this function.
     
     # Loop through all grid cells using their x and y indices
-    for cell_x_index, cell_y_index in np.ndindex(const.NUM_CELLS_X, const.NUM_CELLS_Y):
+    for cell_x_index, cell_y_index in np.ndindex(NUM_CELLS_X, NUM_CELLS_Y):
         
         # Get the coordinates of the four face corners (A, B, C, D) for the current cell
-        [x_point_a, y_point_a] = get_face_coordinates(cell_x_index, cell_y_index, 'A')  # Corner A (South-West)
-        [x_point_b, y_point_b] = get_face_coordinates(cell_x_index, cell_y_index, 'B')  # Corner B (North-West)
-        [x_point_c, y_point_c] = get_face_coordinates(cell_x_index, cell_y_index, 'C')  # Corner C (North-East)
-        [x_point_d, y_point_d] = get_face_coordinates(cell_x_index, cell_y_index, 'D')  # Corner D (South-East)
+        [x_point_a, y_point_a] = get_vertex_coordinates(cell_x_index, cell_y_index, 'A')  # Corner A (South-West)
+        [x_point_b, y_point_b] = get_vertex_coordinates(cell_x_index, cell_y_index, 'B')  # Corner B (North-West)
+        [x_point_c, y_point_c] = get_vertex_coordinates(cell_x_index, cell_y_index, 'C')  # Corner C (North-East)
+        [x_point_d, y_point_d] = get_vertex_coordinates(cell_x_index, cell_y_index, 'D')  # Corner D (South-East)
         
         # Calculate the normal vector ndS for each face of the current cell:
         # Face 0 (South): Between points D and A
@@ -361,7 +272,7 @@ def _calculate_ndS():
             -(x_point_a - x_point_d)  # y-component
         ])
         
-        # Face 1 (West): Between points A and B
+        # Face 1 (East): Between points A and B
         ndS[cell_x_index, cell_y_index, 1, :] = np.array([
             (y_point_b - y_point_a),  # x-component
             -(x_point_b - x_point_a)  # y-component
@@ -373,7 +284,7 @@ def _calculate_ndS():
             -(x_point_c - x_point_b)  # y-component
         ])
         
-        # Face 3 (East): Between points C and D
+        # Face 3 (West): Between points C and D
         ndS[cell_x_index, cell_y_index, 3, :] = np.array([
             (y_point_d - y_point_c),  # x-component
             -(x_point_d - x_point_c)  # y-component
@@ -401,9 +312,9 @@ def plot_mesh():
     show_horizontal_grid = True
     show_vertical_grid = True
     show_face_points = True
-    show_center_points = False
+    show_center_points = True
     show_diagonal_lines = False
-    show_cell_area = True
+    show_cell_area = False
     
     show_normal_vector = False
     show_normal_vector_south = True
@@ -411,12 +322,12 @@ def plot_mesh():
     show_normal_vector_west = True
     show_normal_vector_east = True
 
-    x_axis_limits = [-const.DOMAIN_LENGTH-cell_dx/2, 2*const.DOMAIN_LENGTH+cell_dx/2]
-    y_axis_limits = [0-cell_dy[0]/2, const.CHANNEL_HEIGHT+cell_dy[0]/2]
+    x_axis_limits = [-DOMAIN_LENGTH-cell_dx/2, 2*DOMAIN_LENGTH+cell_dx/2]
+    y_axis_limits = [0-cell_dy[0]/2, CHANNEL_HEIGHT+cell_dy[0]/2]
 
-    save_grid_plot = True
+    save_grid_plot = False
     if save_grid_plot:
-        grid_plot_filename = "../img/mesh_with_cell_area.pdf"
+        grid_plot_filename = "../img/mesh_with_normal_vectors.pdf"
     #######################################################################
     # Plot the Grid
     #######################################################################
@@ -433,12 +344,12 @@ def plot_mesh():
 
     # Add the parameter info
     plt.text(text_x, text_y, 'Parameters', transform=fig.transFigure, ha='left', va='bottom')
-    plt.text(text_x, text_y-0.05, f'  Nx = {const.NUM_CELLS_X} ', transform=fig.transFigure, ha='left', va='bottom')
-    plt.text(text_x, text_y-0.1, f'  Ny = {const.NUM_CELLS_Y}', transform=fig.transFigure, ha='left', va='bottom')
+    plt.text(text_x, text_y-0.05, f'  Nx = {NUM_CELLS_X} ', transform=fig.transFigure, ha='left', va='bottom')
+    plt.text(text_x, text_y-0.1, f'  Ny = {NUM_CELLS_Y}', transform=fig.transFigure, ha='left', va='bottom')
 
     if show_vertical_grid:
         # Plot vertical grid lines at each y-face.
-        for i, j in np.ndindex(const.NUM_CELLS_X, const.NUM_FACES_Y):
+        for i, j in np.ndindex(NUM_CELLS_X, NUM_FACES_Y):
             ax.plot(
                 [face_x_coords[i], face_x_coords[i+1]],  # x-coordinates for the vertical line
                 [face_y_coords[i, j], face_y_coords[i+1, j]],  # y-coordinates for the line at this vertical slice
@@ -447,7 +358,7 @@ def plot_mesh():
 
     if show_horizontal_grid:
         # Plot horizontal grid lines at each x-face.
-        for i, j in np.ndindex(const.NUM_FACES_X, const.NUM_CELLS_Y):
+        for i, j in np.ndindex(NUM_FACES_X, NUM_CELLS_Y):
             ax.plot(
                 [face_x_coords[i], face_x_coords[i]],  # x-coordinate remains constant (vertical face)
                 [face_y_coords[i, j], face_y_coords[i, j+1]],  # Connect y-coordinates for this x-face
@@ -456,7 +367,7 @@ def plot_mesh():
 
     if show_diagonal_lines:
         # Plot diagonal lines for each cell to form a criss-cross pattern.
-        for i, j in np.ndindex(const.NUM_CELLS_X, const.NUM_CELLS_Y):
+        for i, j in np.ndindex(NUM_CELLS_X, NUM_CELLS_Y):
             # Diagonal from bottom-left to top-right
             ax.plot(
                 [face_x_coords[i], face_x_coords[i+1]],  # x-coordinates of the diagonal
@@ -490,7 +401,7 @@ def plot_mesh():
             )
 
     if show_cell_area:
-        for i, j in np.ndindex(const.NUM_CELLS_X, const.NUM_CELLS_Y):
+        for i, j in np.ndindex(NUM_CELLS_X, NUM_CELLS_Y):
             # Check if the current cell's x and y coordinates are within the axis limits
             if (
                 x_axis_limits[0] <= cell_x_coords[i] <= x_axis_limits[1] and  # Check x-axis bounds
@@ -507,7 +418,7 @@ def plot_mesh():
                 )
 
     if show_normal_vector:
-        for i, j in np.ndindex(const.NUM_CELLS_X, const.NUM_CELLS_Y):
+        for i, j in np.ndindex(NUM_CELLS_X, NUM_CELLS_Y):
             arrow_scale = 0.05
             if show_normal_vector_south:
                 # south arrow
@@ -517,10 +428,10 @@ def plot_mesh():
                 ax.arrow(get_point_coordinates(i,j)[0] - cell_dx/8, get_point_coordinates(i,j)[1] + cell_dy[j]/2, arrow_scale*get_normal_vector(i,j,'N')[0], arrow_scale*get_normal_vector(i,j,'N')[1], head_width = 0.5 * arrow_scale, head_length = 0.5 * arrow_scale, color='blue')
             if show_normal_vector_west:
                 # west arrow
-                ax.arrow(get_point_coordinates(i,j)[0] + cell_dx/2, get_point_coordinates(i,j)[1] + cell_dy[j]/8, arrow_scale*get_normal_vector(i,j,'W')[0], arrow_scale*get_normal_vector(i,j,'W')[1], head_width = 0.5 * arrow_scale, head_length = 0.5 * arrow_scale, color='red')
+                ax.arrow(get_point_coordinates(i,j)[0] - cell_dx/2, get_point_coordinates(i,j)[1] + cell_dy[j]/8, arrow_scale*get_normal_vector(i,j,'W')[0], arrow_scale*get_normal_vector(i,j,'W')[1], head_width = 0.5 * arrow_scale, head_length = 0.5 * arrow_scale, color='red')
             if show_normal_vector_east:
-                # west arrow
-                ax.arrow(get_point_coordinates(i,j)[0] - cell_dx/2, get_point_coordinates(i,j)[1] - cell_dy[j]/8, arrow_scale*get_normal_vector(i,j,'E')[0], arrow_scale*get_normal_vector(i,j,'E')[1], head_width = 0.5 * arrow_scale, head_length = 0.5 * arrow_scale, color='blue')
+                # east arrow
+                ax.arrow(get_point_coordinates(i,j)[0] + cell_dx/2, get_point_coordinates(i,j)[1] - cell_dy[j]/8, arrow_scale*get_normal_vector(i,j,'E')[0], arrow_scale*get_normal_vector(i,j,'E')[1], head_width = 0.5 * arrow_scale, head_length = 0.5 * arrow_scale, color='blue')
         ax.plot([],[], color='red', label=r"$n_{south}$ / $n_{west}$")
         ax.plot([],[], color='blue', label=r"$n_{north}$ / $n_{east}$")
 
@@ -539,3 +450,77 @@ def plot_mesh():
 
     if save_grid_plot:
         fig.savefig(grid_plot_filename)
+
+
+#######################################################################
+# Initialize the grid cell coordinates
+#######################################################################
+
+# Calculate grid spacing in the x-direction
+# cell_dx is the spacing between the centers (or faces) of the cells in the x-direction
+# It is constant throughout the entire domain
+cell_dx = CHANNEL_LENGTH / NUM_CELLS_X
+
+# Generate the x-coordinates for the centers of the cells
+# This creates an array of evenly spaced coordinates for the cell centers
+cell_x_coords = np.linspace(cell_dx / 2, CHANNEL_LENGTH - cell_dx / 2, NUM_CELLS_X)
+
+# Shift the x-coordinates by L to align with the desired coordinate system
+cell_x_coords -= DOMAIN_LENGTH
+
+# Compute the bump height at the center of each cell
+# The bump height, cell_y0, is determined using the get_y0 function
+cell_y0 = _calculate_bump_height(cell_x_coords)
+
+# Calculate the grid spacing in the y-direction for each x-coordinate
+# cell_dy is determined by dividing the height above the bump by the number of cells
+# This ensures the spacing varies appropriately with the domain geometry
+cell_dy = (CHANNEL_HEIGHT - cell_y0) / NUM_CELLS_Y
+
+# Generate the y-coordinates for the centers of the cells in the y-direction
+# The coordinates are offset to ensure the cell centers align correctly in the domain
+cell_y_coords = np.linspace(cell_y0 + cell_dy / 2, CHANNEL_HEIGHT - cell_dy / 2, NUM_CELLS_Y)
+
+# Transpose the face_y_coords array so that indexing is consistent
+# After transposing, face_y_coords(x, index_y) will match the expected structure:
+# the first index corresponds to the x-position, and the second to the y-position
+cell_y_coords = np.transpose(cell_y_coords)
+
+#######################################################################
+# Initialize the grid face coordinates
+#######################################################################
+
+# Generate the x-coordinates for the faces of the cells
+# This creates evenly spaced coordinates for the vertical faces of the cells
+face_x_coords = np.linspace(0, CHANNEL_LENGTH, NUM_FACES_X)
+
+# Shift the x-coordinates by L to align with the desired coordinate system
+# This ensures the face coordinates match the shifted cell coordinates
+face_x_coords -= DOMAIN_LENGTH
+
+# Compute the bump height at the faces of each x-cell
+# Similar to cell_y0, face_y0 adjusts for the domain geometry at the cell faces
+face_y0 = _calculate_bump_height(face_x_coords)
+
+# Calculate the grid spacing in the y-direction (at x-coordinates of the faces)
+# The spacing varies depending on the bump height, face_y0
+face_dy = (CHANNEL_HEIGHT - face_y0) / NUM_CELLS_Y
+
+# Generate the y-coordinates for the faces in the y-direction
+# This creates a 2D array of face y-coordinates that varies with x and y
+face_y_coords = np.linspace(face_y0, CHANNEL_HEIGHT, NUM_FACES_Y)
+
+# Transpose the face_y_coords array so that indexing is consistent
+# After transposing, face_y_coords(x, index_y) will match the expected structure:
+# the first index corresponds to the x-position, and the second to the y-position
+face_y_coords = np.transpose(face_y_coords)
+
+#######################################################################
+# Calculate Grid Parameters
+#######################################################################
+
+# Calculate the area of each cell in the grid
+_calculate_cell_area()
+
+# Calculate the normal-face vector (n * dS) for all cells
+_calculate_ndS()
