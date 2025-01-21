@@ -1,6 +1,6 @@
 # WIP
 # TODO: Done
-from globals import *
+from global_var import *
 import numpy as np
 import calculate_flux as cF
 

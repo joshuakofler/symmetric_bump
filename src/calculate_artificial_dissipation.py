@@ -1,6 +1,8 @@
-# TODO calculate artificial dissipation at the boundaries
+# TODO 
+# (?) Calculate artificial dissipation at the boundaries
+#     - currently set to zero at the boundaries 
 
-from globals import *
+from global_var import *
 import numpy as np
 
 def update_artificial_dissipation():
@@ -22,13 +24,13 @@ def update_artificial_dissipation():
     # boundaries are still to be implemented!!!
 
     # south artificial dissipation at bottom boundary
-    artificial_dissipation[:, 0, 0] = 100
+    artificial_dissipation[:, 0, 0] = 0
     # north artificial dissipation at top boundary
-    artificial_dissipation[:, -1, 2] = 200
+    artificial_dissipation[:, -1, 2] = 0
     # west artificial dissipation at inlet boundary
-    artificial_dissipation[0, :, 3] = 300
+    artificial_dissipation[0, :, 3] = 0
     # east artificial dissipation at outlet boundary
-    artificial_dissipation[-1, :, 1] = 400
+    artificial_dissipation[-1, :, 1] = 0
 
     return None
 
@@ -95,8 +97,8 @@ def calculate_coefficient():
     # north artificial dissipation coefficent (TOP boundary) 
     a_d_coefficient_gamma[:,-1,2] = 0
     # west artificial dissipation coefficent (inlet boundary) 
-    a_d_coefficient_gamma[0,:,3] = 300
+    a_d_coefficient_gamma[0,:,3] = 0
     # east artificial dissipation coefficent (outlet boundary) 
-    a_d_coefficient_gamma[-1,:,1] = 400
+    a_d_coefficient_gamma[-1,:,1] = 0
 
     return None

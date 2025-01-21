@@ -1,22 +1,20 @@
 #%%
 # This module uses a RK-scheme to calculate the next timestep
 
-from globals import *
+from global_var import *
 import numpy as np
 import cell
 import calculate_residual as cR
 
-dt = 0
-
-def run_iteration(state_vector):
-
+def run_iteration():
+    global state_vector
     # this mehtod uses a rk 4 to calculate the new state_vector
     # between each step the cell properties have to be updated
     # as well as the residuals have to be updated
     # after that one can calculate the maxium velocity and with
     # this one can define the timestep used in the rk
 
-    # calculate timestßep
+    # calculate timestep
     calculate_timestep()
 
     # in the first step it isnt needed to update the cell_properties as well as the 
@@ -36,8 +34,20 @@ def run_iteration(state_vector):
 
         calculate_timestep()
 
+    state_vector[:,:,0] = state_vector[:,:,0] - dt / cell_area[:,:] * R[:,:,0]
+    state_vector[:,:,1] = state_vector[:,:,1] - dt / cell_area[:,:] * R[:,:,1]
+    state_vector[:,:,2] = state_vector[:,:,2] - dt / cell_area[:,:] * R[:,:,2]
+    state_vector[:,:,3] = state_vector[:,:,3] - dt / cell_area[:,:] * R[:,:,3]
+
     return None
 
 def calculate_timestep():
-    dt = 0
+    global time, dt
+    u_mag = np.norm(u[:,:]) 
+    umax = max(abs(u_mag + c[:,:]), abs(u_mag - c[:,:]))
+
+    dt = CFL / (umax / cell_dx + umax / cell_dy)
+
+    time += dt
+
     return dt

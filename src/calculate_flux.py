@@ -1,10 +1,8 @@
-# WIP
-# TODO: Calculate/Define flux at the boundaries
+# TODO: Done
 
-from globals import *
+from global_var import *
 import numpy as np
 import calculate_artificial_dissipation as ad
-from mesh import get_normal_vector
 
 def update_flux():
     # Update the flux vector components (f) in the x-direction
@@ -18,7 +16,6 @@ def update_flux():
     g[:, :, 1] = rho[:,:] * u[:,:,0] * u[:,:,1]      # Momentum flux in x-direction
     g[:, :, 2] = rho[:,:] * u[:,:,1]**2 + p[:,:]     # Momentum flux in y-direction
     g[:, :, 3] = rho[:,:] * u[:,:,1] * H[:,:]        # Energy flux in y-direction
-
 
     # Calculate the interior fluxes at the east face (index 1) using vectorized operations.
     # For each cell, the east face flux is computed as the average of values from 
@@ -94,23 +91,56 @@ def update_flux():
     # (f[0] * (yC - yB) - g[0] * (xC - xB)) where yC-yB = 0 and g[0] = 0
     F[:, -1, 2, 0] = 0.0
     F[:, -1, 2, 1] = 0.0
-    F[:, -1, 2, 2] = p[:,-1]
+    F[:, -1, 2, 2] = p[:, -1] * ndS[:, -1, 2, 1]
     F[:, -1, 2, 3] = 0.0
     
     # south flux at bottom wall
     # vn = 0
-    nx, ny = get_normal_vector(np.arange(0,NUM_CELLS_X,1), 0, 'S')
 
     F[:, 0, 0, 0] = 0.0
-    F[:, 0, 0, 1] = p[:, 0] * nx
-    F[:, 0, 0, 2] = p[:, 0] * ny
+    F[:, 0, 0, 1] = p[:, 0] * ndS[:, 0, 0, 0]
+    F[:, 0, 0, 2] = p[:, 0] * ndS[:, 0, 0, 1]
     F[:, 0, 0, 3] = 0.0
     
     # west flux at inlet
-    F[0,:,3,:] = 300
+    v_in = 0
+
+    c_in = (HEAT_CAPACITY_RATIO - 1) / 2 * (u_infty - u[0,:,0]) + c_infty - c[0,:]
+
+    u_in = u[0,:,0] + 2 / (HEAT_CAPACITY_RATIO - 1) * (c[0,:] + c_infty)
+
+    T_in = c_in**2 / (HEAT_CAPACITY_RATIO * GAS_CONSTANT)
+
+    rho_in = np.power( rho_infty**HEAT_CAPACITY_RATIO * GAS_CONSTANT * T_in / ATMOSPHERIC_PRESSURE ,1/(HEAT_CAPACITY_RATIO-1))
+
+    p_in = rho_in * GAS_CONSTANT * T_in
+
+    H_in = SPECIFIC_HEAT_CP * T_in + 0.5 * (u_in**2 + v_in**2)
+
+    F[0,:,3,0] = rho_in * u_in * ndS[0, :, 3, 0]               # Mass flux (density)
+    F[0,:,3,1] = (rho_in * u_in**2 + p_in) * ndS[0, :, 3, 0]   # Momentum flux in x-direction
+    F[0,:,3,2] = rho_in * u_in * v_in * ndS[0, :, 3, 0]        # Momentum flux in y-direction
+    F[0,:,3,3] = rho_in * u_in * H_in * ndS[0, :, 3, 0]        # Energy flux in x-direction
 
     # east flux at outlet
-    F[-1,:,1,:] = 400
+    p_out = ATMOSPHERIC_PRESSURE * np.ones(NUM_CELLS_Y, 'd')
+    
+    rho_out = rho[-1, :] * np.power((p_out[:] / p[-1, :]), 1/HEAT_CAPACITY_RATIO)
+
+    T_out = p_out/(rho_out * GAS_CONSTANT)
+
+    c_out = np.sqrt(HEAT_CAPACITY_RATIO * GAS_CONSTANT * T_out)
+
+    u_out = u[-1, :, 0] + 2 / (HEAT_CAPACITY_RATIO - 1) * (c[-1, :] - c_out)
+
+    v_out = u[-1, :, 1]
+
+    H_out = SPECIFIC_HEAT_CP * T_out + 0.5 * (u_out**2 + v_out**2)
+
+    F[-1,:,1,0] = rho_out * u_out * ndS[-1, :, 1, 0]                # Mass flux (density)
+    F[-1,:,1,1] = (rho_out * u_out**2 + p_out) * ndS[-1, :, 1, 0]   # Momentum flux in x-direction
+    F[-1,:,1,2] = rho_out * u_out * v_out * ndS[-1, :, 1, 0]        # Momentum flux in y-direction
+    F[-1,:,1,3] = rho_out * u_out * H_out * ndS[-1, :, 1, 0]        # Energy flux in x-direction
 
     #######################################################################
     # Add artificial dissipation

@@ -13,10 +13,9 @@ Notes:
 """
 
 # import modules
-from globals import *
+from global_var import *
 import numpy as np
 from matplotlib import pyplot as plt
-
 
 # define the functions
 def get_point_coordinates(cell_x_index, cell_y_index):
@@ -210,7 +209,7 @@ def _calculate_cell_area():
         - The cell area is calculated using the determinant formula for quadrilaterals.
         - This function iterates over all cells in the grid defined by `NUM_CELLS_X` and `NUM_CELLS_Y`.
     """
-
+    global cell_area
     try:
         for cell_x_index, cell_y_index in np.ndindex(NUM_CELLS_X, NUM_CELLS_Y):
             # Retrieve the edge points of the cell
@@ -255,7 +254,7 @@ def _calculate_ndS():
         - The face-normal vector is calculated for each face using its endpoints.
         - The function loops over all cells in the grid and calculates ndS for each face.
     """
-    
+    global ndS
     # Loop through all grid cells using their x and y indices
     for cell_x_index, cell_y_index in np.ndindex(NUM_CELLS_X, NUM_CELLS_Y):
         
@@ -451,76 +450,82 @@ def plot_mesh():
     if save_grid_plot:
         fig.savefig(grid_plot_filename)
 
+def initialize():
+    global cell_dx, cell_x_coords, cell_y0, cell_dy, cell_y_coords
+    global face_x_coords, face_y0, face_dy, face_y_coords
+    global cell_area, ndS
 
-#######################################################################
-# Initialize the grid cell coordinates
-#######################################################################
+    #######################################################################
+    # Initialize the grid cell coordinates
+    #######################################################################
 
-# Calculate grid spacing in the x-direction
-# cell_dx is the spacing between the centers (or faces) of the cells in the x-direction
-# It is constant throughout the entire domain
-cell_dx = CHANNEL_LENGTH / NUM_CELLS_X
+    # Calculate grid spacing in the x-direction
+    # cell_dx is the spacing between the centers (or faces) of the cells in the x-direction
+    # It is constant throughout the entire domain
+    cell_dx = CHANNEL_LENGTH / NUM_CELLS_X
 
-# Generate the x-coordinates for the centers of the cells
-# This creates an array of evenly spaced coordinates for the cell centers
-cell_x_coords = np.linspace(cell_dx / 2, CHANNEL_LENGTH - cell_dx / 2, NUM_CELLS_X)
+    # Generate the x-coordinates for the centers of the cells
+    # This creates an array of evenly spaced coordinates for the cell centers
+    cell_x_coords = np.linspace(cell_dx / 2, CHANNEL_LENGTH - cell_dx / 2, NUM_CELLS_X)
 
-# Shift the x-coordinates by L to align with the desired coordinate system
-cell_x_coords -= DOMAIN_LENGTH
+    # Shift the x-coordinates by L to align with the desired coordinate system
+    cell_x_coords -= DOMAIN_LENGTH
 
-# Compute the bump height at the center of each cell
-# The bump height, cell_y0, is determined using the get_y0 function
-cell_y0 = _calculate_bump_height(cell_x_coords)
+    # Compute the bump height at the center of each cell
+    # The bump height, cell_y0, is determined using the get_y0 function
+    cell_y0 = _calculate_bump_height(cell_x_coords)
 
-# Calculate the grid spacing in the y-direction for each x-coordinate
-# cell_dy is determined by dividing the height above the bump by the number of cells
-# This ensures the spacing varies appropriately with the domain geometry
-cell_dy = (CHANNEL_HEIGHT - cell_y0) / NUM_CELLS_Y
+    # Calculate the grid spacing in the y-direction for each x-coordinate
+    # cell_dy is determined by dividing the height above the bump by the number of cells
+    # This ensures the spacing varies appropriately with the domain geometry
+    cell_dy = (CHANNEL_HEIGHT - cell_y0) / NUM_CELLS_Y
 
-# Generate the y-coordinates for the centers of the cells in the y-direction
-# The coordinates are offset to ensure the cell centers align correctly in the domain
-cell_y_coords = np.linspace(cell_y0 + cell_dy / 2, CHANNEL_HEIGHT - cell_dy / 2, NUM_CELLS_Y)
+    # Generate the y-coordinates for the centers of the cells in the y-direction
+    # The coordinates are offset to ensure the cell centers align correctly in the domain
+    cell_y_coords = np.linspace(cell_y0 + cell_dy / 2, CHANNEL_HEIGHT - cell_dy / 2, NUM_CELLS_Y)
 
-# Transpose the face_y_coords array so that indexing is consistent
-# After transposing, face_y_coords(x, index_y) will match the expected structure:
-# the first index corresponds to the x-position, and the second to the y-position
-cell_y_coords = np.transpose(cell_y_coords)
+    # Transpose the face_y_coords array so that indexing is consistent
+    # After transposing, face_y_coords(x, index_y) will match the expected structure:
+    # the first index corresponds to the x-position, and the second to the y-position
+    cell_y_coords = np.transpose(cell_y_coords)
 
-#######################################################################
-# Initialize the grid face coordinates
-#######################################################################
+    #######################################################################
+    # Initialize the grid face coordinates
+    #######################################################################
 
-# Generate the x-coordinates for the faces of the cells
-# This creates evenly spaced coordinates for the vertical faces of the cells
-face_x_coords = np.linspace(0, CHANNEL_LENGTH, NUM_FACES_X)
+    # Generate the x-coordinates for the faces of the cells
+    # This creates evenly spaced coordinates for the vertical faces of the cells
+    face_x_coords = np.linspace(0, CHANNEL_LENGTH, NUM_FACES_X)
 
-# Shift the x-coordinates by L to align with the desired coordinate system
-# This ensures the face coordinates match the shifted cell coordinates
-face_x_coords -= DOMAIN_LENGTH
+    # Shift the x-coordinates by L to align with the desired coordinate system
+    # This ensures the face coordinates match the shifted cell coordinates
+    face_x_coords -= DOMAIN_LENGTH
 
-# Compute the bump height at the faces of each x-cell
-# Similar to cell_y0, face_y0 adjusts for the domain geometry at the cell faces
-face_y0 = _calculate_bump_height(face_x_coords)
+    # Compute the bump height at the faces of each x-cell
+    # Similar to cell_y0, face_y0 adjusts for the domain geometry at the cell faces
+    face_y0 = _calculate_bump_height(face_x_coords)
 
-# Calculate the grid spacing in the y-direction (at x-coordinates of the faces)
-# The spacing varies depending on the bump height, face_y0
-face_dy = (CHANNEL_HEIGHT - face_y0) / NUM_CELLS_Y
+    # Calculate the grid spacing in the y-direction (at x-coordinates of the faces)
+    # The spacing varies depending on the bump height, face_y0
+    face_dy = (CHANNEL_HEIGHT - face_y0) / NUM_CELLS_Y
 
-# Generate the y-coordinates for the faces in the y-direction
-# This creates a 2D array of face y-coordinates that varies with x and y
-face_y_coords = np.linspace(face_y0, CHANNEL_HEIGHT, NUM_FACES_Y)
+    # Generate the y-coordinates for the faces in the y-direction
+    # This creates a 2D array of face y-coordinates that varies with x and y
+    face_y_coords = np.linspace(face_y0, CHANNEL_HEIGHT, NUM_FACES_Y)
 
-# Transpose the face_y_coords array so that indexing is consistent
-# After transposing, face_y_coords(x, index_y) will match the expected structure:
-# the first index corresponds to the x-position, and the second to the y-position
-face_y_coords = np.transpose(face_y_coords)
+    # Transpose the face_y_coords array so that indexing is consistent
+    # After transposing, face_y_coords(x, index_y) will match the expected structure:
+    # the first index corresponds to the x-position, and the second to the y-position
+    face_y_coords = np.transpose(face_y_coords)
 
-#######################################################################
-# Calculate Grid Parameters
-#######################################################################
+    #######################################################################
+    # Calculate Grid Parameters
+    #######################################################################
 
-# Calculate the area of each cell in the grid
-_calculate_cell_area()
+    # Calculate the area of each cell in the grid
+    _calculate_cell_area()
 
-# Calculate the normal-face vector (n * dS) for all cells
-_calculate_ndS()
+    # Calculate the normal-face vector (n * dS) for all cells
+    _calculate_ndS()
+    
+    return None

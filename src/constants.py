@@ -18,7 +18,7 @@ NUM_CELLS_Y = int(2)
 NUM_FACES_X = int(NUM_CELLS_X + 1)
 NUM_FACES_Y = int(NUM_CELLS_Y + 1)
 
-# Gas constant
+# Gas constant (for dry air)
 GAS_CONSTANT = 287.05   # J / kgK
 
 # Specific heat capacities (commented placeholders)
@@ -40,6 +40,8 @@ ATMOSPHERIC_TEMPERATURE = 288       # Temperature in Kelvin
 # RK_ALPHA_3 = 1/3
 # RK_ALPHA_4 = 1/2
 RK_ALPHA = [1/4, 1/3, 1/2, 1]
+
+CFL = 2
 
 # Artificial Dissipation
 # The coefficient k(2) is typically of order 1

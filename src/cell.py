@@ -1,33 +1,43 @@
-# TODO: Define initial solution
-
+#%%
+# TODO: Done
 # this calculates/updates all the quantities for a cell 
-from globals import *
+from global_var import *
+from global_var import c_infty
 import numpy as np
 
-def initialize_domain():
+def initialize():
     # define the initial state of all parameters
-    
-    rho_atm = ATMOSPHERIC_PRESSURE / (GAS_CONSTANT * ATMOSPHERIC_TEMPERATURE)
+    # use the inlet condition as inital state    
+    rho[:,:] = rho_infty
 
-    rho[:,:] = rho_atm     ############
-    u[:,:,0] = 1
+    u[:,:,0] = u_infty
     u[:,:,1] = 0
-    E[:,:] = 0          ###########
 
+    e_init = SPECIFIC_HEAT_CV * ATMOSPHERIC_TEMPERATURE
+    E[:,:] = e_init + 0.5 * (u[:,:,0]**2 + u[:,:,1]**2)
 
+    state_vector[:, :, 0] = rho[:,:]
+    state_vector[:, :, 1] = rho[:,:] * u[:,:,0]
+    state_vector[:, :, 2] = rho[:,:] * u[:,:,1]
+    state_vector[:, :, 3] = rho[:,:] * E[:,:]
 
-    return
+    update_cell_properties(state_vector)
 
-def get_inlet_properties():
+    return None
 
-    # stagnation temperature
-    T_0 = ATMOSPHERIC_TEMPERATURE * (1 + (HEAT_CAPACITY_RATIO - 1)/2 * UPSTREAM_MACH_NUMBER**2)
+def calculate_inlet_properties():
+    # # stagnation temperature
+    # T_0 = ATMOSPHERIC_TEMPERATURE * (1 + (HEAT_CAPACITY_RATIO - 1)/2 * UPSTREAM_MACH_NUMBER**2)
+    # # stagnation pressure
+    # p_0 = ATMOSPHERIC_PRESSURE (1 + (HEAT_CAPACITY_RATIO - 1)/2 * UPSTREAM_MACH_NUMBER**2)^(HEAT_CAPACITY_RATIO/(HEAT_CAPACITY_RATIO-1))
 
-    # stagnation pressure
-    p_0 = ATMOSPHERIC_PRESSURE (1 + (HEAT_CAPACITY_RATIO - 1)/2 * UPSTREAM_MACH_NUMBER**2)^(HEAT_CAPACITY_RATIO/(HEAT_CAPACITY_RATIO-1))
+    global rho_infty, c_infty, u_infty
 
+    rho_infty[:] = ATMOSPHERIC_PRESSURE / (GAS_CONSTANT * ATMOSPHERIC_TEMPERATURE)
+
+    c_infty[:] = np.sqrt(HEAT_CAPACITY_RATIO * GAS_CONSTANT * ATMOSPHERIC_TEMPERATURE)
     
-    
+    u_infty[:] = UPSTREAM_MACH_NUMBER * c_infty
     return None
 
 def get_all_cell_properties(state_vector):
@@ -92,6 +102,8 @@ def update_cell_properties(state_vector):
     Returns:
         None
     """
+    # Overwrite global variables
+    global rho, u, E, e, T, c, p, H
 
     # Extract the state variables from the state vector
     rho[:,:] = state_vector[:,:,0]          # Density
@@ -258,23 +270,19 @@ def print_cell_properties(cell_x_index, cell_y_index):
     ux = u[cell_x_index, cell_y_index, 0]
     uy = u[cell_x_index, cell_y_index, 1]
     total_energy = E[cell_x_index, cell_y_index]
+
+    internal_energy = e[cell_x_index, cell_y_index]
     
-    # Calculate internal energy
-    internal_energy = calculate_internal_energy(total_energy, u[cell_x_index, cell_y_index, :])
+    temperature = T[cell_x_index, cell_y_index]
     
-    # Calculate temperature (assuming you have a function for this)
-    temperature = calculate_temperature(internal_energy)
+    pressure = p[cell_x_index, cell_y_index]
     
-    # Calculate pressure (assuming you have a function for this)
-    pressure = calculate_pressure(density, temperature)
+    speed_of_sound = c[cell_x_index, cell_y_index]
     
-    # Calculate speed of sound (assuming you have a function for this)
-    speed_of_sound = calculate_local_speed_of_sound(temperature)
-    
-    # Calculate enthalpy (assuming you have a function for this)
-    enthalpy = calculate_total_enthalpy(density, total_energy, pressure)
+    enthalpy = H[cell_x_index, cell_y_index]
     
     # Print the properties of the specified cell
+    print("\n\n")
     print(f"Properties of Cell: ({cell_x_index}, {cell_y_index})\n")
     print(f"Density: {density} kg/m³")
     print(f"Velocity components: u_x = {ux} m/s, u_y = {uy} m/s")
@@ -285,5 +293,7 @@ def print_cell_properties(cell_x_index, cell_y_index):
     print(f"Speed of Sound: {speed_of_sound} m/s")
     print(f"Enthalpy: {enthalpy} J/kg")
 
-# load inital solution
-initialize_domain()
+if __name__ == "__main__":
+    calculate_inlet_properties()
+
+    initialize()
