@@ -1,91 +1,46 @@
 #%%
 # TODO: Done
 # this calculates/updates all the quantities for a cell 
-from global_var import *
-from global_var import c_infty
+
+from constants import *
+import global_vars as gv
 import numpy as np
 
 def initialize():
     # define the initial state of all parameters
-    # use the inlet condition as inital state    
-    rho[:,:] = rho_infty
+    # calculate the upstream parameters
+    calculate_inlet_properties()
+    
+    # use the upstream conditions as inital state    
+    gv.rho[:,:] = gv.rho_infty
 
-    u[:,:,0] = u_infty
-    u[:,:,1] = 0
+    gv.u[:,:,0] = gv.u_infty
+    gv.u[:,:,1] = 0.1
 
     e_init = SPECIFIC_HEAT_CV * ATMOSPHERIC_TEMPERATURE
-    E[:,:] = e_init + 0.5 * (u[:,:,0]**2 + u[:,:,1]**2)
+    gv.E[:,:] = e_init + 0.5 * (gv.u[:,:,0]**2 + gv.u[:,:,1]**2)
 
-    state_vector[:, :, 0] = rho[:,:]
-    state_vector[:, :, 1] = rho[:,:] * u[:,:,0]
-    state_vector[:, :, 2] = rho[:,:] * u[:,:,1]
-    state_vector[:, :, 3] = rho[:,:] * E[:,:]
+    gv.state_vector[:, :, 0] = gv.rho[:,:]
+    gv.state_vector[:, :, 1] = gv.rho[:,:] * gv.u[:,:,0]
+    gv.state_vector[:, :, 2] = gv.rho[:,:] * gv.u[:,:,1]
+    gv.state_vector[:, :, 3] = gv.rho[:,:] * gv.E[:,:]
 
-    update_cell_properties(state_vector)
+    update_cell_properties(gv.state_vector)
 
     return None
 
 def calculate_inlet_properties():
     # # stagnation temperature
-    # T_0 = ATMOSPHERIC_TEMPERATURE * (1 + (HEAT_CAPACITY_RATIO - 1)/2 * UPSTREAM_MACH_NUMBER**2)
+    T_0 = ATMOSPHERIC_TEMPERATURE * (1 + (HEAT_CAPACITY_RATIO - 1)/2 * UPSTREAM_MACH_NUMBER**2)
     # # stagnation pressure
-    # p_0 = ATMOSPHERIC_PRESSURE (1 + (HEAT_CAPACITY_RATIO - 1)/2 * UPSTREAM_MACH_NUMBER**2)^(HEAT_CAPACITY_RATIO/(HEAT_CAPACITY_RATIO-1))
+    p_0 = ATMOSPHERIC_PRESSURE * (1 + (HEAT_CAPACITY_RATIO - 1)/2 * UPSTREAM_MACH_NUMBER**2)**(HEAT_CAPACITY_RATIO/(HEAT_CAPACITY_RATIO-1))
 
-    global rho_infty, c_infty, u_infty
+    gv.rho_infty[:] = p_0 / (GAS_CONSTANT * T_0)
 
-    rho_infty[:] = ATMOSPHERIC_PRESSURE / (GAS_CONSTANT * ATMOSPHERIC_TEMPERATURE)
-
-    c_infty[:] = np.sqrt(HEAT_CAPACITY_RATIO * GAS_CONSTANT * ATMOSPHERIC_TEMPERATURE)
+    gv.c_infty[:] = np.sqrt(HEAT_CAPACITY_RATIO * GAS_CONSTANT * T_0)
     
-    u_infty[:] = UPSTREAM_MACH_NUMBER * c_infty
+    gv.u_infty[:] = UPSTREAM_MACH_NUMBER * gv.c_infty
     return None
-
-def get_all_cell_properties(state_vector):
-    """
-    Returns the properties (density, velocity, temperature, pressure, etc.) of all cells in the grid
-    based on the state vector.
-
-    Args:
-        state_vector (np.ndarray): A 3D array where each cell contains the state variables:
-                                    - rho: density
-                                    - ux: x-component of velocity
-                                    - uy: y-component of velocity
-                                    - E: total energy
-
-    Returns:
-        cell_properties (np.ndarray): A 7D array whit all state variables at every grid cell
-    """
-    cell_properties = np.array([NUM_CELLS_X, NUM_CELLS_Y, 5], 'd')
-
-    # Extract the state variables from the state vector
-    rho = state_vector[:,:,0]  # Density
-    u[:,:,0] = state_vector[:,:,1] / rho      # x-component of velocity
-    u[:,:,1] = state_vector[:,:,2] / rho      # y-component of velocity
-    E = state_vector[:,:,3] / rho       # Total energy
-
-    # Calculate internal energy (e)
-    e = calculate_internal_energy(E, state_vector[:,:,1:])
-
-    # Calculate temperature (T) based on internal energy
-    T = calculate_temperature(e)
-
-    # Calculate local speed of sound (c) based on temperature
-    c = calculate_local_speed_of_sound(T)
-
-    # Calculate pressure (p) from density and temperature
-    p = calculate_pressure(rho, T)
-
-    # Calculate total enthalpy (H)
-    H = calculate_total_enthalpy(rho, E, p)
-
-    cell_properties[:,:,0] = e
-    cell_properties[:,:,1] = T
-    cell_properties[:,:,2] = c
-    cell_properties[:,:,3] = p
-    cell_properties[:,:,4] = H
-
-    # No return as this is a function to update values in place
-    return cell_properties
 
 def update_cell_properties(state_vector):
     """
@@ -102,29 +57,26 @@ def update_cell_properties(state_vector):
     Returns:
         None
     """
-    # Overwrite global variables
-    global rho, u, E, e, T, c, p, H
-
     # Extract the state variables from the state vector
-    rho[:,:] = state_vector[:,:,0]          # Density
-    u[:,:,0] = state_vector[:,:,1] / rho    # x-component of velocity
-    u[:,:,1] = state_vector[:,:,2] / rho    # y-component of velocity
-    E[:,:] = state_vector[:,:,3] / rho      # Total energy
+    gv.rho[:,:] = state_vector[:,:,0]          # Density
+    gv.u[:,:,0] = state_vector[:,:,1] / gv.rho    # x-component of velocity
+    gv.u[:,:,1] = state_vector[:,:,2] / gv.rho    # y-component of velocity
+    gv.E[:,:] = state_vector[:,:,3] / gv.rho      # Total energy
 
     # Calculate internal energy (e)
-    e = calculate_internal_energy(E, u)
+    gv.e = calculate_internal_energy(gv.E, gv.u)
 
     # Calculate temperature (T) based on internal energy
-    T = calculate_temperature(e)
+    gv.T = calculate_temperature(gv.e)
 
     # Calculate local speed of sound (c) based on temperature
-    c = calculate_local_speed_of_sound(T)
-
+    gv.c = calculate_local_speed_of_sound(gv.T)
+    
     # Calculate pressure (p) from density and temperature
-    p = calculate_pressure(rho, T)
+    gv.p = calculate_pressure(gv.rho, gv.T)
 
     # Calculate total enthalpy (H)
-    H = calculate_total_enthalpy(rho, E, p)
+    gv.H = calculate_total_enthalpy(gv.rho, gv.E, gv.p)
 
     # No return as this is a function to update values in place
     return None
@@ -251,6 +203,61 @@ def calculate_total_enthalpy(rho, E, p):
 
     return total_enthalpy
 
+def calculate_massflow():
+    # inlet
+    gv.m_in[gv.iteration] = (0.5 * (gv.rho[0,:-1]*gv.u[0,:-1,0] + gv.rho[0,1:]*gv.u[0,1:,0]) * gv.cell_dy[0]).sum()
+    # outlet
+    gv.m_out[gv.iteration] = (0.5 * (gv.rho[-1,:-1]*gv.u[-1,:-1,0] + gv.rho[-1,1:]*gv.u[-1,1:,0]) * gv.cell_dy[-1]).sum()
+    
+    return None
+
+def get_all_cell_properties():
+    """
+    Returns the properties (density, velocity, temperature, pressure, etc.) of all cells in the grid
+    based on the state vector.
+
+    Args:
+        state_vector (np.ndarray): A 3D array where each cell contains the state variables:
+                                    - rho: density
+                                    - ux: x-component of velocity
+                                    - uy: y-component of velocity
+                                    - E: total energy
+
+    Returns:
+        cell_properties (np.ndarray): A 7D array whit all state variables at every grid cell
+    """
+    cell_properties = np.array([NUM_CELLS_X, NUM_CELLS_Y, 5], 'd')
+
+    # Extract the state variables from the state vector
+    rho = gv.state_vector[:,:,0]  # Density
+    gv.u[:,:,0] = gv.state_vector[:,:,1] / rho      # x-component of velocity
+    gv.u[:,:,1] = gv.state_vector[:,:,2] / rho      # y-component of velocity
+    E = gv.state_vector[:,:,3] / rho       # Total energy
+
+    # Calculate internal energy (e)
+    e = calculate_internal_energy(E, gv.state_vector[:,:,1:])
+
+    # Calculate temperature (T) based on internal energy
+    T = calculate_temperature(e)
+
+    # Calculate local speed of sound (c) based on temperature
+    c = calculate_local_speed_of_sound(T)
+
+    # Calculate pressure (p) from density and temperature
+    p = calculate_pressure(rho, T)
+
+    # Calculate total enthalpy (H)
+    H = calculate_total_enthalpy(rho, E, p)
+
+    cell_properties[:,:,0] = e
+    cell_properties[:,:,1] = T
+    cell_properties[:,:,2] = c
+    cell_properties[:,:,3] = p
+    cell_properties[:,:,4] = H
+
+    # No return as this is a function to update values in place
+    return cell_properties
+
 def print_cell_properties(cell_x_index, cell_y_index):
     """
     Print all relevant properties of a specific cell in the grid.
@@ -266,20 +273,20 @@ def print_cell_properties(cell_x_index, cell_y_index):
         E (np.ndarray): A 2D array representing the total energy at each grid point.
     """
     # Get the properties for the specified cell
-    density = rho[cell_x_index, cell_y_index]
-    ux = u[cell_x_index, cell_y_index, 0]
-    uy = u[cell_x_index, cell_y_index, 1]
-    total_energy = E[cell_x_index, cell_y_index]
+    density = gv.rho[cell_x_index, cell_y_index]
+    ux = gv.u[cell_x_index, cell_y_index, 0]
+    uy = gv.u[cell_x_index, cell_y_index, 1]
+    total_energy = gv.E[cell_x_index, cell_y_index]
 
-    internal_energy = e[cell_x_index, cell_y_index]
+    internal_energy = gv.e[cell_x_index, cell_y_index]
     
-    temperature = T[cell_x_index, cell_y_index]
+    temperature = gv.T[cell_x_index, cell_y_index]
     
-    pressure = p[cell_x_index, cell_y_index]
+    pressure = gv.p[cell_x_index, cell_y_index]
     
-    speed_of_sound = c[cell_x_index, cell_y_index]
+    speed_of_sound = gv.c[cell_x_index, cell_y_index]
     
-    enthalpy = H[cell_x_index, cell_y_index]
+    enthalpy = gv.H[cell_x_index, cell_y_index]
     
     # Print the properties of the specified cell
     print("\n\n")
@@ -292,8 +299,3 @@ def print_cell_properties(cell_x_index, cell_y_index):
     print(f"Pressure: {pressure} Pa")
     print(f"Speed of Sound: {speed_of_sound} m/s")
     print(f"Enthalpy: {enthalpy} J/kg")
-
-if __name__ == "__main__":
-    calculate_inlet_properties()
-
-    initialize()

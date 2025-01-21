@@ -1,13 +1,23 @@
 #%%
 # This module uses a RK-scheme to calculate the next timestep
 
-from global_var import *
+from sre_parse import State
+from constants import *
+import global_vars as gv
+
 import numpy as np
 import cell
 import calculate_residual as cR
+import data_io as io
+
+# RK-solution buffer
+Y = np.zeros([NUM_CELLS_X, NUM_CELLS_Y, 4], 'd')
+# Residual 
+R_start = np.zeros([4], 'd')
+R_final = np.zeros([4], 'd')
 
 def run_iteration():
-    global state_vector
+    global Y, R_start, R_final
     # this mehtod uses a rk 4 to calculate the new state_vector
     # between each step the cell properties have to be updated
     # as well as the residuals have to be updated
@@ -21,12 +31,23 @@ def run_iteration():
     # resiuduals bc. it was updated in the last step of the previous iteration
     # so that it wouldnt change anything bc the state vector is the same as before
 
-    for step in range(4):
+    # at step = 0 Y2 is calculate
+    # at setp = 1 Y3 is calculated
+    # at step = 2 Y4 is calculated
+
+    R_start[0] = gv.R[:,:,0].max()
+    R_start[1] = gv.R[:,:,1].max()
+    R_start[2] = gv.R[:,:,2].max()
+    R_start[3] = gv.R[:,:,3].max()
+
+    for step in range(3):
         # calculate the zwischenstep value using a RK method
-        Y[:,:,0] = state_vector[:,:,0] - dt / cell_area[:,:] * RK_ALPHA[step] * R[:,:,0]
-        Y[:,:,1] = state_vector[:,:,1] - dt / cell_area[:,:] * RK_ALPHA[step] * R[:,:,1]
-        Y[:,:,2] = state_vector[:,:,2] - dt / cell_area[:,:] * RK_ALPHA[step] * R[:,:,2]
-        Y[:,:,3] = state_vector[:,:,3] - dt / cell_area[:,:] * RK_ALPHA[step] * R[:,:,3]
+        
+        for i,j in np.ndindex(NUM_CELLS_X, NUM_CELLS_Y):
+            Y[i,j,0] = gv.state_vector[i,j,0] - gv.dt / gv.cell_area[i,j] * RK_ALPHA[step] * gv.R[i,j,0]
+            Y[i,j,1] = gv.state_vector[i,j,1] - gv.dt / gv.cell_area[i,j] * RK_ALPHA[step] * gv.R[i,j,1]
+            Y[i,j,2] = gv.state_vector[i,j,2] - gv.dt / gv.cell_area[i,j] * RK_ALPHA[step] * gv.R[i,j,2]
+            Y[i,j,3] = gv.state_vector[i,j,3] - gv.dt / gv.cell_area[i,j] * RK_ALPHA[step] * gv.R[i,j,3]
 
         cell.update_cell_properties(Y)
 
@@ -34,20 +55,39 @@ def run_iteration():
 
         calculate_timestep()
 
-    state_vector[:,:,0] = state_vector[:,:,0] - dt / cell_area[:,:] * R[:,:,0]
-    state_vector[:,:,1] = state_vector[:,:,1] - dt / cell_area[:,:] * R[:,:,1]
-    state_vector[:,:,2] = state_vector[:,:,2] - dt / cell_area[:,:] * R[:,:,2]
-    state_vector[:,:,3] = state_vector[:,:,3] - dt / cell_area[:,:] * R[:,:,3]
+    for i,j in np.ndindex(NUM_CELLS_X, NUM_CELLS_Y):
+        gv.state_vector[i,j,0] = gv.state_vector[i,j,0] - gv.dt / gv.cell_area[i,j] * RK_ALPHA[3] * gv.R[i,j,0]
+        gv.state_vector[i,j,1] = gv.state_vector[i,j,1] - gv.dt / gv.cell_area[i,j] * RK_ALPHA[3] * gv.R[i,j,1]
+        gv.state_vector[i,j,2] = gv.state_vector[i,j,2] - gv.dt / gv.cell_area[i,j] * RK_ALPHA[3] * gv.R[i,j,2]
+        gv.state_vector[i,j,3] = gv.state_vector[i,j,3] - gv.dt / gv.cell_area[i,j] * RK_ALPHA[3] * gv.R[i,j,3]
+        
+    cell.update_cell_properties(Y)
+
+    cell.calculate_massflow()
+
+    cR.update_residual()
+
+    R_final[0] = gv.R[:,:,0].max()
+    R_final[1] = gv.R[:,:,1].max()
+    R_final[2] = gv.R[:,:,2].max()
+    R_final[3] = gv.R[:,:,3].max()
+
+    if gv.iteration % 10 == 0:
+        io.print_iteration_residual(gv.iteration, R_start, R_final)
 
     return None
 
 def calculate_timestep():
-    global time, dt
-    u_mag = np.norm(u[:,:]) 
-    umax = max(abs(u_mag + c[:,:]), abs(u_mag - c[:,:]))
+    # Compute u_mag
+    u_mag = np.sqrt(gv.u[:, :, 0]**2 + gv.u[:, :, 1]**2)
 
-    dt = CFL / (umax / cell_dx + umax / cell_dy)
+    # Calculate umax considering both (u + c) and (u - c)
+    umax = np.max(np.maximum(np.abs(u_mag + gv.c[:, :]), np.abs(u_mag - gv.c[:, :])))
+    
+    # Update time step
+    gv.dt = CFL / (umax / gv.cell_dx + umax / gv.cell_dy.min())
 
-    time += dt
+    # Update time
+    gv.time += gv.dt
 
-    return dt
+    return None

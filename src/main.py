@@ -2,48 +2,58 @@
 # import modules
 
 # import all global variables from globals 
-from global_var import *
-from global_var import c_infty
-
+from constants import *
+import global_vars as gv
 import numpy as np
+
 import importlib
 
 # own libs
+import mesh
+import cell
 import calculate_artificial_dissipation as aD
 import calculate_flux as cF
 import calculate_residual as cR
 import RK
 import plot
 
-import mesh
-import cell
+import data_io as io
 
-# import global_var
-
-# importlib.reload(global_var)
+importlib.reload(gv)
 importlib.reload(mesh)
+importlib.reload(cell)
 importlib.reload(aD)
 importlib.reload(cF)
 importlib.reload(cR)
 importlib.reload(RK)
 importlib.reload(plot)
-importlib.reload(cell)
+importlib.reload(io)
 
+# Specify at which iterations the output should be saved
+gv.output_iterations = {10, 20, 50, 100}
 
+io.initialize_folder_structure()
 
+# first initialize the mesh
 mesh.initialize()
 
-cell.calculate_inlet_properties()
-
+# initialize the cell paramerters over the whole domain
 cell.initialize()
 
-plot.Mach_number()
+# initialize the residuals 
+cR.update_residual()
 
-#plot.Mach_number()
+# start simulation
+gv.iteration = 0
 
-# for iter in range(10):
-#     iteration += 1
+for iter in range(MAX_ITERATIONS):
+    RK.run_iteration()
+
+    if gv.iteration in gv.output_iterations:
+        io.save_iteration(gv.iteration)
+
+    gv.iteration += 1
+
+plot.Massflow()
     
-#     RK.run_iteration(state_vector)
-
-#     plot.Mach_number()
+#plot.Mach_number()

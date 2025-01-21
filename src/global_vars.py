@@ -48,13 +48,16 @@ c = np.zeros([NUM_CELLS_X, NUM_CELLS_Y], 'd')    # Speed of sound
 p = np.zeros([NUM_CELLS_X, NUM_CELLS_Y], 'd')    # Pressure
 H = np.zeros([NUM_CELLS_X, NUM_CELLS_Y], 'd')    # Total enthalpy
 
+# massflow
+# inlet
+m_in = np.zeros([MAX_ITERATIONS], 'd')
+# outlet
+m_out = np.zeros([MAX_ITERATIONS], 'd')
+
 # Upstream fluid values
 rho_infty = np.zeros([NUM_CELLS_Y])
 c_infty = np.zeros([NUM_CELLS_Y])
 u_infty = np.zeros([NUM_CELLS_Y])
-
-f = np.zeros([NUM_CELLS_X, NUM_CELLS_Y, 4], 'd')
-g = np.zeros([NUM_CELLS_X, NUM_CELLS_Y, 4], 'd')
 
 
 # Flux vector
@@ -65,17 +68,13 @@ F_corrected = np.zeros([NUM_CELLS_X, NUM_CELLS_Y, 4, 4], 'd')
 # Dissipation
 artificial_dissipation = np.zeros([NUM_CELLS_X, NUM_CELLS_Y, 4, 4])
 
-a_d_coefficient_gamma = np.zeros([NUM_CELLS_X, NUM_CELLS_Y, 4])
-
-
 # Residuals
 R = np.zeros([NUM_CELLS_X, NUM_CELLS_Y, 4], 'd')
 
-
-# RK-solution buffer
-Y = np.zeros([NUM_CELLS_X, NUM_CELLS_Y, 4], 'd')
-
 dt = 0
+
 
 iteration = 0
 time = 0
+
+output_iterations = {}

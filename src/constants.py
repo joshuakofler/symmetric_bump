@@ -1,6 +1,18 @@
 #%%
 # Constants
 
+# Basics
+from pathlib import Path
+
+# Get the current directory (which is inside the 'src' folder)
+CURRENT_DIR = Path(__file__).parent
+# Get the project directory
+PROJECT_DIR = CURRENT_DIR.parent
+# Go one level up and then append 'output' to the path
+OUTPUT_DIR = PROJECT_DIR / "output"
+
+MAX_ITERATIONS = 100
+
 # Computational domain dimensions
 DOMAIN_LENGTH = 1  # Base length scale
 
@@ -11,8 +23,8 @@ CHANNEL_LENGTH = 3 * DOMAIN_LENGTH
 BUMP_COEFFICIENT = 0.08
 
 # Number of grid points
-NUM_CELLS_X = int(6)  # For debugging purposes, use values like 6, 12, 24, etc.
-NUM_CELLS_Y = int(2)
+NUM_CELLS_X = int(33)  # For debugging purposes, use values like 6, 12, 24, etc.
+NUM_CELLS_Y = int(20)
 
 # Number of faces in the grid
 NUM_FACES_X = int(NUM_CELLS_X + 1)
@@ -29,7 +41,7 @@ SPECIFIC_HEAT_CP = 1005     # J / kgK
 HEAT_CAPACITY_RATIO = 1.4
 
 # Upstream Mach number
-UPSTREAM_MACH_NUMBER = 0.1
+UPSTREAM_MACH_NUMBER = 0.01
 
 # Atmospheric conditions
 ATMOSPHERIC_PRESSURE = 101300       # Pressure in Pascals

@@ -13,7 +13,8 @@ Notes:
 """
 
 # import modules
-from global_var import *
+from constants import *
+import global_vars as gv
 import numpy as np
 from matplotlib import pyplot as plt
 
@@ -29,7 +30,7 @@ def get_point_coordinates(cell_x_index, cell_y_index):
     Returns:
         np.ndarray: [x-coordinate, y-coordinate] of the point.
     """
-    return np.array([cell_x_coords[cell_x_index], cell_y_coords[cell_x_index, cell_y_index]])
+    return np.array([gv.cell_x_coords[cell_x_index], gv.cell_y_coords[cell_x_index, cell_y_index]])
 
 def get_vertex_coordinates(cell_x_index, cell_y_index, vertex):
     """
@@ -49,13 +50,13 @@ def get_vertex_coordinates(cell_x_index, cell_y_index, vertex):
     try:
         match vertex:
             case ("SW" | "A"):  # Southwest or direction A
-                return np.array([face_x_coords[cell_x_index + 1], face_y_coords[cell_x_index + 1, cell_y_index]])
+                return np.array([gv.face_x_coords[cell_x_index + 1], gv.face_y_coords[cell_x_index + 1, cell_y_index]])
             case ("NW" | "B"):  # Northwest or direction B
-                return np.array([face_x_coords[cell_x_index + 1], face_y_coords[cell_x_index + 1, cell_y_index + 1]])
+                return np.array([gv.face_x_coords[cell_x_index + 1], gv.face_y_coords[cell_x_index + 1, cell_y_index + 1]])
             case ("NE" | "C"):  # Northeast or direction C
-                return np.array([face_x_coords[cell_x_index], face_y_coords[cell_x_index, cell_y_index + 1]])
+                return np.array([gv.face_x_coords[cell_x_index], gv.face_y_coords[cell_x_index, cell_y_index + 1]])
             case ("SE" | "D"):  # Southeast or direction D
-                return np.array([face_x_coords[cell_x_index], face_y_coords[cell_x_index, cell_y_index]])
+                return np.array([gv.face_x_coords[cell_x_index], gv.face_y_coords[cell_x_index, cell_y_index]])
             case _:  # Invalid direction
                 raise ValueError("Invalid direction argument: direction must be 'SW', 'NW', 'NE', 'SE'.")
     except ValueError as error:
@@ -63,7 +64,7 @@ def get_vertex_coordinates(cell_x_index, cell_y_index, vertex):
         return None
 
 def get_cell_dy(cell_x_index):
-    return cell_dy[cell_x_index]
+    return gv.cell_dy[cell_x_index]
 
 def get_cell_area(cell_x_index, cell_y_index):
     """
@@ -76,7 +77,7 @@ def get_cell_area(cell_x_index, cell_y_index):
     Returns:
         float: Area of the cell at the specified indices.
     """
-    return cell_area[cell_x_index, cell_y_index]
+    return gv.cell_area[cell_x_index, cell_y_index]
 
 def get_normal_vector(cell_x_index, cell_y_index, face):
     """
@@ -209,7 +210,6 @@ def _calculate_cell_area():
         - The cell area is calculated using the determinant formula for quadrilaterals.
         - This function iterates over all cells in the grid defined by `NUM_CELLS_X` and `NUM_CELLS_Y`.
     """
-    global cell_area
     try:
         for cell_x_index, cell_y_index in np.ndindex(NUM_CELLS_X, NUM_CELLS_Y):
             # Retrieve the edge points of the cell
@@ -219,11 +219,11 @@ def _calculate_cell_area():
             [x_point_a, y_point_a] = get_vertex_coordinates(cell_x_index, cell_y_index, "A")  # Southwest
 
             # Calculate the area using the determinant formula
-            cell_area[cell_x_index, cell_y_index] = 0.5 * ((x_point_c - x_point_a) * (y_point_d - y_point_b) - (x_point_d - x_point_b) * (y_point_c - y_point_a))
+            gv.cell_area[cell_x_index, cell_y_index] = 0.5 * ((x_point_c - x_point_a) * (y_point_d - y_point_b) - (x_point_d - x_point_b) * (y_point_c - y_point_a))
 
             # Check if the area is negative
-            if cell_area[cell_x_index, cell_y_index] < 0:
-                raise ValueError(f"Negative cell area calculated: {cell_area[cell_x_index, cell_y_index]} for cell ({cell_x_index}, {cell_y_index})")
+            if gv.cell_area[cell_x_index, cell_y_index] < 0:
+                raise ValueError(f"Negative cell area calculated: {gv.cell_area[cell_x_index, cell_y_index]} for cell ({cell_x_index}, {cell_y_index})")
 
     except ValueError as e:
         print(f"Error: {e}")
@@ -254,7 +254,6 @@ def _calculate_ndS():
         - The face-normal vector is calculated for each face using its endpoints.
         - The function loops over all cells in the grid and calculates ndS for each face.
     """
-    global ndS
     # Loop through all grid cells using their x and y indices
     for cell_x_index, cell_y_index in np.ndindex(NUM_CELLS_X, NUM_CELLS_Y):
         
@@ -266,25 +265,25 @@ def _calculate_ndS():
         
         # Calculate the normal vector ndS for each face of the current cell:
         # Face 0 (South): Between points D and A
-        ndS[cell_x_index, cell_y_index, 0, :] = np.array([
+        gv.ndS[cell_x_index, cell_y_index, 0, :] = np.array([
             (y_point_a - y_point_d),  # x-component
             -(x_point_a - x_point_d)  # y-component
         ])
         
         # Face 1 (East): Between points A and B
-        ndS[cell_x_index, cell_y_index, 1, :] = np.array([
+        gv.ndS[cell_x_index, cell_y_index, 1, :] = np.array([
             (y_point_b - y_point_a),  # x-component
             -(x_point_b - x_point_a)  # y-component
         ])
         
         # Face 2 (North): Between points B and C
-        ndS[cell_x_index, cell_y_index, 2, :] = np.array([
+        gv.ndS[cell_x_index, cell_y_index, 2, :] = np.array([
             (y_point_c - y_point_b),  # x-component
             -(x_point_c - x_point_b)  # y-component
         ])
         
         # Face 3 (West): Between points C and D
-        ndS[cell_x_index, cell_y_index, 3, :] = np.array([
+        gv.ndS[cell_x_index, cell_y_index, 3, :] = np.array([
             (y_point_d - y_point_c),  # x-component
             -(x_point_d - x_point_c)  # y-component
         ])
@@ -302,7 +301,6 @@ def plot_mesh():
     Returns:
         None: The function directly generates and displays the plot.
     """
-
     fig, ax = plt.subplots()
 
     #######################################################################
@@ -321,8 +319,8 @@ def plot_mesh():
     show_normal_vector_west = True
     show_normal_vector_east = True
 
-    x_axis_limits = [-DOMAIN_LENGTH-cell_dx/2, 2*DOMAIN_LENGTH+cell_dx/2]
-    y_axis_limits = [0-cell_dy[0]/2, CHANNEL_HEIGHT+cell_dy[0]/2]
+    x_axis_limits = [-DOMAIN_LENGTH-gv.cell_dx/2, 2*DOMAIN_LENGTH+gv.cell_dx/2]
+    y_axis_limits = [0-gv.cell_dy[0]/2, CHANNEL_HEIGHT+gv.cell_dy[0]/2]
 
     save_grid_plot = False
     if save_grid_plot:
@@ -350,8 +348,8 @@ def plot_mesh():
         # Plot vertical grid lines at each y-face.
         for i, j in np.ndindex(NUM_CELLS_X, NUM_FACES_Y):
             ax.plot(
-                [face_x_coords[i], face_x_coords[i+1]],  # x-coordinates for the vertical line
-                [face_y_coords[i, j], face_y_coords[i+1, j]],  # y-coordinates for the line at this vertical slice
+                [gv.face_x_coords[i], gv.face_x_coords[i+1]],  # x-coordinates for the vertical line
+                [gv.face_y_coords[i, j], gv.face_y_coords[i+1, j]],  # y-coordinates for the line at this vertical slice
                 '--', color="gray", linewidth=0.5  # Dashed gray line with thin width
             )
 
@@ -359,8 +357,8 @@ def plot_mesh():
         # Plot horizontal grid lines at each x-face.
         for i, j in np.ndindex(NUM_FACES_X, NUM_CELLS_Y):
             ax.plot(
-                [face_x_coords[i], face_x_coords[i]],  # x-coordinate remains constant (vertical face)
-                [face_y_coords[i, j], face_y_coords[i, j+1]],  # Connect y-coordinates for this x-face
+                [gv.face_x_coords[i], gv.face_x_coords[i]],  # x-coordinate remains constant (vertical face)
+                [gv.face_y_coords[i, j], gv.face_y_coords[i, j+1]],  # Connect y-coordinates for this x-face
                 '--', color="gray", linewidth=0.5  # Dashed gray line
             )
 
@@ -369,33 +367,33 @@ def plot_mesh():
         for i, j in np.ndindex(NUM_CELLS_X, NUM_CELLS_Y):
             # Diagonal from bottom-left to top-right
             ax.plot(
-                [face_x_coords[i], face_x_coords[i+1]],  # x-coordinates of the diagonal
-                [face_y_coords[i, j], face_y_coords[i+1, j+1]],  # y-coordinates of the diagonal
+                [gv.face_x_coords[i], gv.face_x_coords[i+1]],  # x-coordinates of the diagonal
+                [gv.face_y_coords[i, j], gv.face_y_coords[i+1, j+1]],  # y-coordinates of the diagonal
                 '--', color="gray", linewidth=0.5  # Dashed gray line
             )
             # Diagonal from top-left to bottom-right
             ax.plot(
-                [face_x_coords[i], face_x_coords[i+1]],  # x-coordinates of the diagonal
-                [face_y_coords[i, j+1], face_y_coords[i+1, j]],  # y-coordinates of the diagonal
+                [gv.face_x_coords[i], gv.face_x_coords[i+1]],  # x-coordinates of the diagonal
+                [gv.face_y_coords[i, j+1], gv.face_y_coords[i+1, j]],  # y-coordinates of the diagonal
                 '--', color="gray", linewidth=0.5  # Dashed gray line
             )
 
     if show_center_points:
         # Plot markers for the cell centers.
         # These correspond to cell_x_coords (center of each cell in the x-direction) and cell_y_coords (center of each cell in the y-direction).
-        for index, x in enumerate(cell_x_coords):
+        for index, x in enumerate(gv.cell_x_coords):
             ax.scatter(
-                np.full_like(cell_y_coords[index, :], x),  # Fill x-values to match cell_y_coords array for this x-index
-                cell_y_coords[index, :],  # y-coordinates at this x
+                np.full_like(gv.cell_y_coords[index, :], x),  # Fill x-values to match cell_y_coords array for this x-index
+                gv.cell_y_coords[index, :],  # y-coordinates at this x
                 marker='o', s=13, color='k'  # Black circles as markers
             )
 
     if show_face_points:
         # Plot markers for the cell faces.
-        for index, x in enumerate(face_x_coords):
+        for index, x in enumerate(gv.face_x_coords):
             ax.scatter(
-                np.full_like(face_y_coords[index, :], x),  # Fill x-values to match face_y_coords array for this x-index
-                face_y_coords[index, :],  # y-coordinates at this x-face
+                np.full_like(gv.face_y_coords[index, :], x),  # Fill x-values to match face_y_coords array for this x-index
+                gv.face_y_coords[index, :],  # y-coordinates at this x-face
                 marker='s', s=15, color='g'  # Green squares as markers
             )
 
@@ -403,14 +401,14 @@ def plot_mesh():
         for i, j in np.ndindex(NUM_CELLS_X, NUM_CELLS_Y):
             # Check if the current cell's x and y coordinates are within the axis limits
             if (
-                x_axis_limits[0] <= cell_x_coords[i] <= x_axis_limits[1] and  # Check x-axis bounds
-                y_axis_limits[0] <= cell_y_coords[i, j] <= y_axis_limits[1]  # Check y-axis bounds
+                x_axis_limits[0] <= gv.cell_x_coords[i] <= x_axis_limits[1] and  # Check x-axis bounds
+                y_axis_limits[0] <= gv.cell_y_coords[i, j] <= y_axis_limits[1]  # Check y-axis bounds
             ):
                 # Plot the cell area value as text inside the axes
                 ax.text(
-                    cell_x_coords[i],
-                    cell_y_coords[i, j],
-                    s=np.round(cell_area[i, j], decimals=6),  # Rounded cell area value as text
+                    gv.cell_x_coords[i],
+                    gv.cell_y_coords[i, j],
+                    s=np.round(gv.cell_area[i, j], decimals=6),  # Rounded cell area value as text
                     fontsize=6,
                     horizontalalignment='center',
                     verticalalignment='center',
@@ -421,16 +419,16 @@ def plot_mesh():
             arrow_scale = 0.05
             if show_normal_vector_south:
                 # south arrow
-                ax.arrow(get_point_coordinates(i,j)[0] + cell_dx/8, get_point_coordinates(i,j)[1] - cell_dy[j]/2, arrow_scale*get_normal_vector(i,j,'S')[0], arrow_scale*get_normal_vector(i,j,'S')[1], head_width = 0.5 * arrow_scale, head_length = 0.5 * arrow_scale, color='red')
+                ax.arrow(get_point_coordinates(i,j)[0] + gv.cell_dx/8, get_point_coordinates(i,j)[1] - gv.cell_dy[j]/2, arrow_scale*get_normal_vector(i,j,'S')[0], arrow_scale*get_normal_vector(i,j,'S')[1], head_width = 0.5 * arrow_scale, head_length = 0.5 * arrow_scale, color='red')
             if show_normal_vector_north:    
                 # north arrow
-                ax.arrow(get_point_coordinates(i,j)[0] - cell_dx/8, get_point_coordinates(i,j)[1] + cell_dy[j]/2, arrow_scale*get_normal_vector(i,j,'N')[0], arrow_scale*get_normal_vector(i,j,'N')[1], head_width = 0.5 * arrow_scale, head_length = 0.5 * arrow_scale, color='blue')
+                ax.arrow(get_point_coordinates(i,j)[0] - gv.cell_dx/8, get_point_coordinates(i,j)[1] + gv.cell_dy[j]/2, arrow_scale*get_normal_vector(i,j,'N')[0], arrow_scale*get_normal_vector(i,j,'N')[1], head_width = 0.5 * arrow_scale, head_length = 0.5 * arrow_scale, color='blue')
             if show_normal_vector_west:
                 # west arrow
-                ax.arrow(get_point_coordinates(i,j)[0] - cell_dx/2, get_point_coordinates(i,j)[1] + cell_dy[j]/8, arrow_scale*get_normal_vector(i,j,'W')[0], arrow_scale*get_normal_vector(i,j,'W')[1], head_width = 0.5 * arrow_scale, head_length = 0.5 * arrow_scale, color='red')
+                ax.arrow(get_point_coordinates(i,j)[0] - gv.cell_dx/2, get_point_coordinates(i,j)[1] + gv.cell_dy[j]/8, arrow_scale*get_normal_vector(i,j,'W')[0], arrow_scale*get_normal_vector(i,j,'W')[1], head_width = 0.5 * arrow_scale, head_length = 0.5 * arrow_scale, color='red')
             if show_normal_vector_east:
                 # east arrow
-                ax.arrow(get_point_coordinates(i,j)[0] + cell_dx/2, get_point_coordinates(i,j)[1] - cell_dy[j]/8, arrow_scale*get_normal_vector(i,j,'E')[0], arrow_scale*get_normal_vector(i,j,'E')[1], head_width = 0.5 * arrow_scale, head_length = 0.5 * arrow_scale, color='blue')
+                ax.arrow(get_point_coordinates(i,j)[0] + gv.cell_dx/2, get_point_coordinates(i,j)[1] - gv.cell_dy[j]/8, arrow_scale*get_normal_vector(i,j,'E')[0], arrow_scale*get_normal_vector(i,j,'E')[1], head_width = 0.5 * arrow_scale, head_length = 0.5 * arrow_scale, color='blue')
         ax.plot([],[], color='red', label=r"$n_{south}$ / $n_{west}$")
         ax.plot([],[], color='blue', label=r"$n_{north}$ / $n_{east}$")
 
@@ -451,10 +449,6 @@ def plot_mesh():
         fig.savefig(grid_plot_filename)
 
 def initialize():
-    global cell_dx, cell_x_coords, cell_y0, cell_dy, cell_y_coords
-    global face_x_coords, face_y0, face_dy, face_y_coords
-    global cell_area, ndS
-
     #######################################################################
     # Initialize the grid cell coordinates
     #######################################################################
@@ -462,32 +456,32 @@ def initialize():
     # Calculate grid spacing in the x-direction
     # cell_dx is the spacing between the centers (or faces) of the cells in the x-direction
     # It is constant throughout the entire domain
-    cell_dx = CHANNEL_LENGTH / NUM_CELLS_X
+    gv.cell_dx = CHANNEL_LENGTH / NUM_CELLS_X
 
     # Generate the x-coordinates for the centers of the cells
     # This creates an array of evenly spaced coordinates for the cell centers
-    cell_x_coords = np.linspace(cell_dx / 2, CHANNEL_LENGTH - cell_dx / 2, NUM_CELLS_X)
+    gv.cell_x_coords = np.linspace(gv.cell_dx / 2, CHANNEL_LENGTH - gv.cell_dx / 2, NUM_CELLS_X)
 
     # Shift the x-coordinates by L to align with the desired coordinate system
-    cell_x_coords -= DOMAIN_LENGTH
+    gv.cell_x_coords -= DOMAIN_LENGTH
 
     # Compute the bump height at the center of each cell
     # The bump height, cell_y0, is determined using the get_y0 function
-    cell_y0 = _calculate_bump_height(cell_x_coords)
+    gv.cell_y0 = _calculate_bump_height(gv.cell_x_coords)
 
     # Calculate the grid spacing in the y-direction for each x-coordinate
     # cell_dy is determined by dividing the height above the bump by the number of cells
     # This ensures the spacing varies appropriately with the domain geometry
-    cell_dy = (CHANNEL_HEIGHT - cell_y0) / NUM_CELLS_Y
+    gv.cell_dy = (CHANNEL_HEIGHT - gv.cell_y0) / NUM_CELLS_Y
 
     # Generate the y-coordinates for the centers of the cells in the y-direction
     # The coordinates are offset to ensure the cell centers align correctly in the domain
-    cell_y_coords = np.linspace(cell_y0 + cell_dy / 2, CHANNEL_HEIGHT - cell_dy / 2, NUM_CELLS_Y)
+    gv.cell_y_coords = np.linspace(gv.cell_y0 + gv.cell_dy / 2, CHANNEL_HEIGHT - gv.cell_dy / 2, NUM_CELLS_Y)
 
     # Transpose the face_y_coords array so that indexing is consistent
     # After transposing, face_y_coords(x, index_y) will match the expected structure:
     # the first index corresponds to the x-position, and the second to the y-position
-    cell_y_coords = np.transpose(cell_y_coords)
+    gv.cell_y_coords = np.transpose(gv.cell_y_coords)
 
     #######################################################################
     # Initialize the grid face coordinates
@@ -495,28 +489,28 @@ def initialize():
 
     # Generate the x-coordinates for the faces of the cells
     # This creates evenly spaced coordinates for the vertical faces of the cells
-    face_x_coords = np.linspace(0, CHANNEL_LENGTH, NUM_FACES_X)
+    gv.face_x_coords = np.linspace(0, CHANNEL_LENGTH, NUM_FACES_X)
 
     # Shift the x-coordinates by L to align with the desired coordinate system
     # This ensures the face coordinates match the shifted cell coordinates
-    face_x_coords -= DOMAIN_LENGTH
+    gv.face_x_coords -= DOMAIN_LENGTH
 
     # Compute the bump height at the faces of each x-cell
     # Similar to cell_y0, face_y0 adjusts for the domain geometry at the cell faces
-    face_y0 = _calculate_bump_height(face_x_coords)
+    gv.face_y0 = _calculate_bump_height(gv.face_x_coords)
 
     # Calculate the grid spacing in the y-direction (at x-coordinates of the faces)
     # The spacing varies depending on the bump height, face_y0
-    face_dy = (CHANNEL_HEIGHT - face_y0) / NUM_CELLS_Y
+    gv.face_dy = (CHANNEL_HEIGHT - gv.face_y0) / NUM_CELLS_Y
 
     # Generate the y-coordinates for the faces in the y-direction
     # This creates a 2D array of face y-coordinates that varies with x and y
-    face_y_coords = np.linspace(face_y0, CHANNEL_HEIGHT, NUM_FACES_Y)
+    gv.face_y_coords = np.linspace(gv.face_y0, CHANNEL_HEIGHT, NUM_FACES_Y)
 
     # Transpose the face_y_coords array so that indexing is consistent
     # After transposing, face_y_coords(x, index_y) will match the expected structure:
     # the first index corresponds to the x-position, and the second to the y-position
-    face_y_coords = np.transpose(face_y_coords)
+    gv.face_y_coords = np.transpose(gv.face_y_coords)
 
     #######################################################################
     # Calculate Grid Parameters
