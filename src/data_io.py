@@ -10,8 +10,8 @@ from datetime import datetime
 import os
 import vtk
 
-def initialize_folder_structure():
-    # Initialize the ouput folder structure
+def clear_folder_structure():
+    # Clear the output folder structure
 
     # Check if the base directory exists
     if os.path.exists(OUTPUT_DIR):
@@ -29,17 +29,22 @@ def initialize_folder_structure():
                         os.rmdir(subdir_path)
                 os.rmdir(folder_path)  # Remove the now-empty folder
                 print(f"Deleted folder: {folder_path}")
-
-        # Create folders for each iteration
-        for iteration in gv.output_iterations:
-            folder_name = os.path.join(OUTPUT_DIR, f"{iteration}")
-            os.makedirs(folder_name, exist_ok=True)  # Creates the folder if it doesn't exist
-            print(f"Created folder: {folder_name}")
     else:
         print(f"The directory {OUTPUT_DIR} does not exist.")
 
     print("\n")
+    return None
 
+def initialize_folder_structure():
+    # Initialize the output folder structure
+    
+    # Create folders for each iteration
+    for iteration in gv.output_iterations:
+        folder_name = os.path.join(OUTPUT_DIR, f"{iteration}")
+        os.makedirs(folder_name, exist_ok=True)  # Creates the folder if it doesn't exist
+        print(f"Created folder: {folder_name}")
+
+    print("\n")
     return None
 
 def save_iteration(iteration):
@@ -122,7 +127,7 @@ def read_iteration_file(file_path):
     # Extract the points
     vtk_points = poly_data.GetPoints()
     num_points = vtk_points.GetNumberOfPoints()
-    points = np.array([vtk_points.GetPoint(i) for i in range(num_points)])
+    #points = np.array([vtk_points.GetPoint(i) for i in range(num_points)])
 
     # Extract the state vector data array
     state_vectors_array = poly_data.GetPointData().GetArray("StateVector")
@@ -132,8 +137,11 @@ def read_iteration_file(file_path):
     # Extract the state vectors
     state_vectors = np.array([state_vectors_array.GetTuple(i) for i in range(num_points)])
 
+    # Reshape state_vectors to the shape 
+    state_vectors_grid = state_vectors.reshape((NUM_CELLS_X, NUM_CELLS_Y, 4))
+
     print(f"Successfully read {num_points} points and state vectors from {file_path}")
-    return points, state_vectors
+    return state_vectors_grid
 
 def simplify_file_path(file_path, base_path):
     """Simplify the file path by stripping the base path."""

@@ -1,26 +1,22 @@
-# TODO: Done
+# TODO: Check south flux at the bottom wall! 
 
 from constants import *
 import global_vars as gv
 import numpy as np
 import calculate_artificial_dissipation as ad
 
-f = np.zeros([NUM_CELLS_X, NUM_CELLS_Y, 4], 'd')
-g = np.zeros([NUM_CELLS_X, NUM_CELLS_Y, 4], 'd')
-
 def update_flux():
-    global f, g
     # Update the flux vector components (f) in the x-direction
-    f[:, :, 0] = gv.rho[:,:] * gv.u[:,:,0]                 # Mass flux (density)
-    f[:, :, 1] = gv.rho[:,:] * gv.u[:,:,0]**2 + gv.p[:,:]     # Momentum flux in x-direction
-    f[:, :, 2] = gv.rho[:,:] * gv.u[:,:,0] * gv.u[:,:,1]      # Momentum flux in y-direction
-    f[:, :, 3] = gv.rho[:,:] * gv.u[:,:,0] * gv.H[:,:]        # Energy flux in x-direction
+    gv.f[:, :, 0] = gv.rho[:,:] * gv.u[:,:,0]                 # Mass flux (density)
+    gv.f[:, :, 1] = gv.rho[:,:] * gv.u[:,:,0]**2 + gv.p[:,:]     # Momentum flux in x-direction
+    gv.f[:, :, 2] = gv.rho[:,:] * gv.u[:,:,0] * gv.u[:,:,1]      # Momentum flux in y-direction
+    gv.f[:, :, 3] = gv.rho[:,:] * gv.u[:,:,0] * gv.H[:,:]        # Energy flux in x-direction
 
     # Update the flux vector components (g) in the y-direction
-    g[:, :, 0] = gv.rho[:,:] * gv.u[:,:,1]                 # Mass flux (density)
-    g[:, :, 1] = gv.rho[:,:] * gv.u[:,:,0] * gv.u[:,:,1]      # Momentum flux in x-direction
-    g[:, :, 2] = gv.rho[:,:] * gv.u[:,:,1]**2 + gv.p[:,:]     # Momentum flux in y-direction
-    g[:, :, 3] = gv.rho[:,:] * gv.u[:,:,1] * gv.H[:,:]        # Energy flux in y-direction
+    gv.g[:, :, 0] = gv.rho[:,:] * gv.u[:,:,1]                 # Mass flux (density)
+    gv.g[:, :, 1] = gv.rho[:,:] * gv.u[:,:,0] * gv.u[:,:,1]      # Momentum flux in x-direction
+    gv.g[:, :, 2] = gv.rho[:,:] * gv.u[:,:,1]**2 + gv.p[:,:]     # Momentum flux in y-direction
+    gv.g[:, :, 3] = gv.rho[:,:] * gv.u[:,:,1] * gv.H[:,:]        # Energy flux in y-direction
 
     # # Calculate the interior fluxes at the east face (index 1) using vectorized operations.
     # # For each cell, the east face flux is computed as the average of values from 
@@ -68,8 +64,8 @@ def update_flux():
         # East face (index 1) flux calculation
         # Average the values of f and g between adjacent cells and scale by
         # the normal vector components at the east face.
-        gv.F[i,j,1,:] = (0.5 * (f[i,j,:] + f[i+1,j,:]) * gv.ndS[i,j,1][0]
-                    + 0.5 * (g[i,j,:] + g[i+1,j,:]) * gv.ndS[i,j,1][1])
+        gv.F[i,j,1,:] = (0.5 * (gv.f[i,j,:] + gv.f[i+1,j,:]) * gv.ndS[i,j,1,0]
+                       + 0.5 * (gv.g[i,j,:] + gv.g[i+1,j,:]) * gv.ndS[i,j,1,1])
 
         # Copy the calculated flux directly to the west face (index 3) of the neighbor cell.
         gv.F[i+1,j,3,:] = -gv.F[i,j,1,:]
@@ -77,8 +73,8 @@ def update_flux():
     for i, j in np.ndindex(NUM_CELLS_X, NUM_CELLS_Y-1):
         # Calculate the north face (index 2) flux between the current cell (i, j)
         # and the adjacent cell to the north (i, j+1).
-        gv.F[i,j,2,:] = (0.5 * (f[i,j,:] + f[i,j+1,:]) * gv.ndS[i,j,2][0] 
-                    + 0.5 * (g[i,j,:] + g[i,j+1,:]) * gv.ndS[i,j,2][1])
+        gv.F[i,j,2,:] = (0.5 * (gv.f[i,j,:] + gv.f[i,j+1,:]) * gv.ndS[i,j,2,0] 
+                       + 0.5 * (gv.g[i,j,:] + gv.g[i,j+1,:]) * gv.ndS[i,j,2,1])
     
         # Copy the calculated north face flux to the south face (index 0)
         # of the adjacent cell (i, j+1), with a negation to account for
@@ -113,7 +109,7 @@ def update_flux():
     u_in = gv.u[0,:,0] + 2 / (HEAT_CAPACITY_RATIO - 1) * (gv.c_infty - gv.c[0,:])
 
     T_in = c_in**2 / (HEAT_CAPACITY_RATIO * GAS_CONSTANT)
-
+    
     rho_in = np.power(gv.rho_infty**HEAT_CAPACITY_RATIO * GAS_CONSTANT * T_in / ATMOSPHERIC_PRESSURE ,1/(HEAT_CAPACITY_RATIO-1))
 
     p_in = rho_in * GAS_CONSTANT * T_in

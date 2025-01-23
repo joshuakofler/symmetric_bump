@@ -63,7 +63,7 @@ def run_iteration():
         
     cell.update_cell_properties(Y)
 
-    cell.calculate_massflow()
+    cell.update_in_out_massflow()
 
     cR.update_residual()
 

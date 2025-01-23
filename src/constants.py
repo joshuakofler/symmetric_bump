@@ -23,8 +23,8 @@ CHANNEL_LENGTH = 3 * DOMAIN_LENGTH
 BUMP_COEFFICIENT = 0.08
 
 # Number of grid points
-NUM_CELLS_X = int(33)  # For debugging purposes, use values like 6, 12, 24, etc.
-NUM_CELLS_Y = int(20)
+NUM_CELLS_X = int(65)  # For debugging purposes, use values like 6, 12, 24, etc.
+NUM_CELLS_Y = int(33)
 
 # Number of faces in the grid
 NUM_FACES_X = int(NUM_CELLS_X + 1)

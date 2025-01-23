@@ -6,6 +6,8 @@ from constants import *
 import global_vars as gv
 import numpy as np
 
+from mesh import get_cell_dy
+
 def initialize():
     # define the initial state of all parameters
     # calculate the upstream parameters
@@ -15,7 +17,10 @@ def initialize():
     gv.rho[:,:] = gv.rho_infty
 
     gv.u[:,:,0] = gv.u_infty
-    gv.u[:,:,1] = 0.1
+
+    gv.u[:,:,1] = 0.01
+    gv.u[:,0,1] = 0.0
+    gv.u[:,-1,1] = 0.0
 
     e_init = SPECIFIC_HEAT_CV * ATMOSPHERIC_TEMPERATURE
     gv.E[:,:] = e_init + 0.5 * (gv.u[:,:,0]**2 + gv.u[:,:,1]**2)
@@ -30,10 +35,14 @@ def initialize():
     return None
 
 def calculate_inlet_properties():
+
     # # stagnation temperature
     T_0 = ATMOSPHERIC_TEMPERATURE * (1 + (HEAT_CAPACITY_RATIO - 1)/2 * UPSTREAM_MACH_NUMBER**2)
     # # stagnation pressure
     p_0 = ATMOSPHERIC_PRESSURE * (1 + (HEAT_CAPACITY_RATIO - 1)/2 * UPSTREAM_MACH_NUMBER**2)**(HEAT_CAPACITY_RATIO/(HEAT_CAPACITY_RATIO-1))
+
+    # T_0 = ATMOSPHERIC_TEMPERATURE
+    # p_0 = ATMOSPHERIC_PRESSURE
 
     gv.rho_infty[:] = p_0 / (GAS_CONSTANT * T_0)
 
@@ -78,7 +87,34 @@ def update_cell_properties(state_vector):
     # Calculate total enthalpy (H)
     gv.H = calculate_total_enthalpy(gv.rho, gv.E, gv.p)
 
+    gv.M = calculate_mach_number(gv.u, gv.c)
+
     # No return as this is a function to update values in place
+    return None
+
+def update_in_out_massflow():
+    """
+    Update the inlet and outlet mass flow for the current iteration and save the values for convergence analysis.
+
+    The function computes the mass flow at the inlet and outlet of the system using the `calculate_massflow` function.
+    The inlet mass flow is calculated for the first mesh line (index 0), and the outlet mass flow is calculated for 
+    the last mesh line (index NUM_CELLS_X-1). These values are then stored for later analysis of the convergence history.
+
+    This function is typically called once per iteration to track the evolution of mass flow over time.
+
+    Args:
+        None
+
+    Returns:
+        None
+    """
+    
+    # Calculates the inlet mass flow for the current iteration
+    gv.m_in[gv.iteration-1] = calculate_massflow(gv.rho, gv.u, 0)
+
+    # Calculates the outlet mass flow for the current iteration
+    gv.m_out[gv.iteration-1] = calculate_massflow(gv.rho, gv.u, NUM_CELLS_X-1)
+
     return None
 
 def calculate_internal_energy(E, u):
@@ -203,13 +239,55 @@ def calculate_total_enthalpy(rho, E, p):
 
     return total_enthalpy
 
-def calculate_massflow():
-    # inlet
-    gv.m_in[gv.iteration] = (0.5 * (gv.rho[0,:-1]*gv.u[0,:-1,0] + gv.rho[0,1:]*gv.u[0,1:,0]) * gv.cell_dy[0]).sum()
-    # outlet
-    gv.m_out[gv.iteration] = (0.5 * (gv.rho[-1,:-1]*gv.u[-1,:-1,0] + gv.rho[-1,1:]*gv.u[-1,1:,0]) * gv.cell_dy[-1]).sum()
+def calculate_mach_number(u, c):
+    """
+    Calculate the Mach number at each point in the grid.
+
+    The Mach number (M) is calculated using the following formula:
+        M = √(u_x² + u_y²) / c
+
+    Where:
+        M is the Mach number,
+        u_x and u_y are the velocity components in the x and y directions, respectively,
+        c is the speed of sound at each grid point.
+
+    Args:
+        u (np.ndarray): The velocity field (u_x, u_y) in m/s with shape (n, m, 2), where n and m are the number of grid points in the x and y directions.
+        c (np.ndarray): The speed of sound at each point in the grid, in m/s, with shape (n, m), where n and m are the number of grid points in the x and y directions.
+
+    Returns:
+        np.ndarray: The Mach number (M) at each point in the grid, with shape (n, m).
+    """
     
-    return None
+    M = np.sqrt(u[:,:,0]**2 + u[:,:,1]**2) / c[:,:]
+    return M
+
+def calculate_massflow(rho, u, cell_x_index):
+    """
+    Calculate the mass flow through a vertical mesh line (indexed by cell_x_index) using a second-order trapezoidal integration method.
+
+    The mass flow (m) is calculated using the following formula:
+        m = Σ [ 0.5 * (ρ_i * u_i + ρ_(i+1) * u_(i+1)) * Δy ]
+
+    Where:
+        m is the mass flow,
+        ρ (rho) is the density of the gas in kg/m³ at each cell,
+        u is the velocity in m/s at each cell,
+        Δy is the cell spacing in the y-direction (vertical distance between adjacent cells).
+
+    Args:
+        rho (np.ndarray): The density (ρ) of the gas in kg/m³, with shape (1, n), where n is the number of cells in the x-direction.
+        u (np.ndarray): The velocity (u) of the gas in m/s, with shape (1, n, 1), where n is the number of cells in the x-direction.
+        iteration (int): The current iteration in the simulation, not used directly in the calculation but could be useful for debugging or logging.
+        cell_x_index (int): The index of the vertical mesh line in the x-direction for which the mass flow is to be calculated.
+
+    Returns:
+        float: The total mass flow (m) through the vertical mesh line at cell_x_index, in kg/s.
+    """
+    # Apply the trapezoidal rule to calculate mass flow
+    m = (0.5 * (rho[cell_x_index, :-1] * u[cell_x_index, :-1, 0] + rho[cell_x_index, 1:] * u[cell_x_index, 1:, 0]) * get_cell_dy(cell_x_index)).sum() 
+    
+    return m
 
 def get_all_cell_properties():
     """
@@ -299,3 +377,39 @@ def print_cell_properties(cell_x_index, cell_y_index):
     print(f"Pressure: {pressure} Pa")
     print(f"Speed of Sound: {speed_of_sound} m/s")
     print(f"Enthalpy: {enthalpy} J/kg")
+
+def get_point_data(cell_x_index, cell_y_index, prop):
+    return np.mean([prop[cell_x_index+1, cell_y_index], 
+                    prop[cell_x_index+1, cell_y_index+1],
+                    prop[cell_x_index, cell_y_index+1], 
+                    prop[cell_x_index, cell_y_index]])
+
+def get_point_data_old(face_x_index, face_y_index):
+    # corners
+    if (face_x_index == 0 and face_y_index == 0):
+        return 0.01#inlet Mach number
+    
+    if (face_x_index == 0 and face_y_index == NUM_FACES_Y-1):
+        return 0.01#inlet Mach number
+    
+    if (face_x_index == NUM_FACES_X-1 and face_y_index == 0):
+        return 0.01#outlet Mach number
+    
+    if (face_x_index == NUM_FACES_X-1 and face_y_index == NUM_FACES_Y-1):
+        return 0.01#outlet Mach number
+    
+    # edges
+    if (face_x_index == 0):
+        return 0.01#inlet Mach number
+    if (face_x_index == NUM_FACES_X-1):
+        return 0.01#outlet Mach number
+    if (face_y_index == 0):
+        return np.mean([gv.M[face_x_index-1, 0], gv.M[face_x_index, 0]])
+    
+    if (face_y_index == NUM_FACES_Y-1):
+        return np.mean([gv.M[face_x_index-1, -1], gv.M[face_x_index, -1]])
+
+    return np.mean([gv.M[face_x_index-1, face_y_index-2], 
+                    gv.M[face_x_index-1, face_y_index-1],
+                    gv.M[face_x_index-2, face_y_index-1], 
+                    gv.M[face_x_index-2, face_y_index-2]])

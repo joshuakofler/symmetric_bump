@@ -47,6 +47,8 @@ T = np.zeros([NUM_CELLS_X, NUM_CELLS_Y], 'd')    # Temperature
 c = np.zeros([NUM_CELLS_X, NUM_CELLS_Y], 'd')    # Speed of sound
 p = np.zeros([NUM_CELLS_X, NUM_CELLS_Y], 'd')    # Pressure
 H = np.zeros([NUM_CELLS_X, NUM_CELLS_Y], 'd')    # Total enthalpy
+M = np.zeros([NUM_CELLS_X, NUM_CELLS_Y], 'd')    # Mach number
+
 
 # massflow
 # inlet
@@ -59,6 +61,8 @@ rho_infty = np.zeros([NUM_CELLS_Y])
 c_infty = np.zeros([NUM_CELLS_Y])
 u_infty = np.zeros([NUM_CELLS_Y])
 
+f = np.zeros([NUM_CELLS_X, NUM_CELLS_Y, 4], 'd')
+g = np.zeros([NUM_CELLS_X, NUM_CELLS_Y, 4], 'd')
 
 # Flux vector
 F = np.zeros([NUM_CELLS_X, NUM_CELLS_Y, 4, 4], 'd')
@@ -67,6 +71,13 @@ F_corrected = np.zeros([NUM_CELLS_X, NUM_CELLS_Y, 4, 4], 'd')
 
 # Dissipation
 artificial_dissipation = np.zeros([NUM_CELLS_X, NUM_CELLS_Y, 4, 4])
+
+a_d_coefficient_gamma = np.zeros([NUM_CELLS_X, NUM_CELLS_Y, 4])
+a_d_coefficient_eta = np.zeros([NUM_CELLS_X, NUM_CELLS_Y, 4])
+
+nu = np.zeros([NUM_CELLS_X, NUM_CELLS_Y])
+
+
 
 # Residuals
 R = np.zeros([NUM_CELLS_X, NUM_CELLS_Y, 4], 'd')
