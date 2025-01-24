@@ -5,7 +5,7 @@ import global_vars as gv
 import numpy as np
 import calculate_artificial_dissipation as ad
 
-def update_flux():
+def update_flux(state_vector):
     # Update the flux vector components (f) in the x-direction
     gv.f[:, :, 0] = gv.rho[:,:] * gv.u[:,:,0]                 # Mass flux (density)
     gv.f[:, :, 1] = gv.rho[:,:] * gv.u[:,:,0]**2 + gv.p[:,:]     # Momentum flux in x-direction
@@ -146,7 +146,7 @@ def update_flux():
     #######################################################################
 
     # Add numerical flux corrections to all faces
-    ad.update_artificial_dissipation()
+    ad.update_artificial_dissipation(state_vector)
 
     # Compute corrected flux for the east face
     gv.F_corrected[:,:,1,:] = gv.F[:,:,1,:] - gv.artificial_dissipation[:,:,1]  # East face (index 1)

@@ -5,9 +5,9 @@ import global_vars as gv
 import numpy as np
 import calculate_flux as cF
 
-def update_residual():
+def update_residual(state_vector):
     # update flux vector using the currently saved cell properties
-    cF.update_flux()
+    cF.update_flux(state_vector)
     
     for i,j in np.ndindex(NUM_CELLS_X, NUM_CELLS_Y):
         gv.R[i,j,0] = np.sum(gv.F_corrected[i,j,:,0])

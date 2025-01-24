@@ -5,7 +5,7 @@ from constants import *
 import global_vars as gv
 import numpy as np
 
-def update_artificial_dissipation():
+def update_artificial_dissipation(state_vector):
     # Calculate coefficients used for artificial dissipation
     calculate_coefficient()
     #----------------------------------------------------------------------
@@ -15,10 +15,10 @@ def update_artificial_dissipation():
         for j in range(NUM_CELLS_Y):  # Loop over all cells in the y-direction
             # Compute dissipation for the east/west direction
             gv.artificial_dissipation[i, j, 1, :] = - gv.a_d_coefficient_gamma[i, j, 1] * (
-                  1 * gv.state_vector[i + 2, j, :]
-                - 3 * gv.state_vector[i + 1, j, :]
-                + 3 * gv.state_vector[i, j, :]
-                - 1 * gv.state_vector[i - 1, j, :]
+                  1 * state_vector[i + 2, j, :]
+                - 3 * state_vector[i + 1, j, :]
+                + 3 * state_vector[i, j, :]
+                - 1 * state_vector[i - 1, j, :]
             )
             # Copy the east face dissipation to the west face of the neighboring cell
             gv.artificial_dissipation[i + 1, j, 3, :] = gv.artificial_dissipation[i, j, 1, :]
@@ -28,7 +28,7 @@ def update_artificial_dissipation():
     i = 0
     for j in range(NUM_CELLS_Y):
         gv.artificial_dissipation[i, j, 1, :] = gv.a_d_coefficient_gamma[i, j, 1] * (
-            gv.state_vector[i + 1, j, :] - gv.state_vector[i, j, :]
+            state_vector[i + 1, j, :] - state_vector[i, j, :]
         )
         gv.artificial_dissipation[i + 1, j, 3, :] = gv.artificial_dissipation[i, j, 1, :]
 
@@ -37,7 +37,7 @@ def update_artificial_dissipation():
     i = NUM_CELLS_X - 2
     for j in range(NUM_CELLS_Y):
         gv.artificial_dissipation[i, j, 1, :] = gv.a_d_coefficient_gamma[i, j, 1] * (
-            gv.state_vector[i + 1, j, :] - gv.state_vector[i, j, :]
+            state_vector[i + 1, j, :] - state_vector[i, j, :]
         )
         gv.artificial_dissipation[i + 1, j, 3, :] = gv.artificial_dissipation[i, j, 1, :]
 
@@ -48,10 +48,10 @@ def update_artificial_dissipation():
         for j in range(1, NUM_CELLS_Y - 2):  # Exclude boundary cells
             # Compute dissipation for the north/south direction
             gv.artificial_dissipation[i, j, 2, :] = - gv.a_d_coefficient_gamma[i, j, 2] * (
-                  1 * gv.state_vector[i, j + 2, :]
-                - 3 * gv.state_vector[i, j + 1, :]
-                + 3 * gv.state_vector[i, j, :]
-                - 1 * gv.state_vector[i, j - 1, :]
+                  1 * state_vector[i, j + 2, :]
+                - 3 * state_vector[i, j + 1, :]
+                + 3 * state_vector[i, j, :]
+                - 1 * state_vector[i, j - 1, :]
             )
             # Copy the north face dissipation to the south face of the neighboring cell
             gv.artificial_dissipation[i, j + 1, 0, :] = gv.artificial_dissipation[i, j, 2, :]
@@ -61,7 +61,7 @@ def update_artificial_dissipation():
     j = 0
     for i in range(NUM_CELLS_X):
         gv.artificial_dissipation[i, j, 2, :] = gv.a_d_coefficient_gamma[i, j, 2] * (
-            gv.state_vector[i, j + 1, :] - gv.state_vector[i, j, :]
+            state_vector[i, j + 1, :] - state_vector[i, j, :]
         )
         gv.artificial_dissipation[i, j + 1, 0, :] = gv.artificial_dissipation[i, j, 2, :]
 
@@ -70,7 +70,7 @@ def update_artificial_dissipation():
     j = NUM_CELLS_Y - 2
     for i in range(NUM_CELLS_X):
         gv.artificial_dissipation[i, j, 2, :] = gv.a_d_coefficient_gamma[i, j, 2] * (
-            gv.state_vector[i, j + 1, :] - gv.state_vector[i, j, :]
+            state_vector[i, j + 1, :] - state_vector[i, j, :]
         )
         gv.artificial_dissipation[i, j + 1, 0, :] = gv.artificial_dissipation[i, j, 2, :]
 
@@ -152,7 +152,7 @@ def calculate_coefficient():
 
     return None
 
-def update_artificial_dissipation_simple():
+def update_artificial_dissipation_simple(state_vector):
 
     calculate_coefficient()
 
@@ -160,7 +160,7 @@ def update_artificial_dissipation_simple():
     for i, j in np.ndindex(NUM_CELLS_X-1, NUM_CELLS_Y):
         #artificial_dissipation[i,j,1] = a_d_coefficient_gamma[i,j,1] * (state_vector[i+1,j] - state_vector[i, j])
         # If artificial_dissipation is multi-component
-        gv.artificial_dissipation[i, j, 1, :] = gv.a_d_coefficient_gamma[i, j, 1] * (gv.state_vector[i+1, j, :] - gv.state_vector[i, j, :])
+        gv.artificial_dissipation[i, j, 1, :] = gv.a_d_coefficient_gamma[i, j, 1] * (state_vector[i+1, j, :] - state_vector[i, j, :])
 
         # the sign is overseen in the calculate flux
         gv.artificial_dissipation[i+1, j, 3, :] = gv.artificial_dissipation[i, j, 1, :]
@@ -168,7 +168,7 @@ def update_artificial_dissipation_simple():
     # north/south
     for i, j in np.ndindex(NUM_CELLS_X, NUM_CELLS_Y-1):
         # North AD 
-        gv.artificial_dissipation[i, j, 2, :] = gv.a_d_coefficient_gamma[i, j, 2] * (gv.state_vector[i, j+1, :] - gv.state_vector[i, j, :])
+        gv.artificial_dissipation[i, j, 2, :] = gv.a_d_coefficient_gamma[i, j, 2] * (state_vector[i, j+1, :] - state_vector[i, j, :])
 
         gv.artificial_dissipation[i, j+1, 0, :] = gv.artificial_dissipation[i, j, 2, :]
 

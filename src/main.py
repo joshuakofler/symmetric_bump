@@ -34,10 +34,10 @@ importlib.reload(io)
 
 runSimulation = True
 # Specify at which iterations the output should be saved
-gv.output_iterations = {100}
+gv.output_iterations = {500}
 
 loadSimulation = False
-iteration = 2000
+iteration = 2200
 sim_file_path = OUTPUT_DIR / str(iteration) / f"{iteration}.vtp"
 
 # clear the output folder
@@ -57,7 +57,7 @@ if runSimulation:
     cell.initialize()
 
     # initialize the residuals 
-    cR.update_residual()
+    cR.update_residual(gv.state_vector)
 
     # start simulation
 
@@ -91,6 +91,6 @@ if loadSimulation:
     
     fig1, ax1 = plt.subplots(figsize=(24,8))
     
-    plot.plot_cell_data(fig1, gv.M, "Mach number", "M")
+    plot.plot_face_data(fig1, gv.M, "Mach number", "M")
 
     #plot.Mach_number()

@@ -51,7 +51,7 @@ def run_iteration():
 
         cell.update_cell_properties(Y)
 
-        cR.update_residual()
+        cR.update_residual(Y)
 
         calculate_timestep()
 
@@ -61,11 +61,11 @@ def run_iteration():
         gv.state_vector[i,j,2] = gv.state_vector[i,j,2] - gv.dt / gv.cell_area[i,j] * RK_ALPHA[3] * gv.R[i,j,2]
         gv.state_vector[i,j,3] = gv.state_vector[i,j,3] - gv.dt / gv.cell_area[i,j] * RK_ALPHA[3] * gv.R[i,j,3]
         
-    cell.update_cell_properties(Y)
+    cell.update_cell_properties(gv.state_vector)
 
     cell.update_in_out_massflow()
 
-    cR.update_residual()
+    cR.update_residual(gv.state_vector)
 
     R_final[0] = gv.R[:,:,0].max()
     R_final[1] = gv.R[:,:,1].max()
@@ -78,14 +78,21 @@ def run_iteration():
     return None
 
 def calculate_timestep():
-    # Compute u_mag
-    u_mag = np.sqrt(gv.u[:, :, 0]**2 + gv.u[:, :, 1]**2)
+    
+    umax = np.max(np.maximum(np.abs(gv.u[:, :, 0].max() + gv.c[:,:]),
+                      np.abs(gv.u[:, :, 0].max() - gv.c[:,:])))
+    
+    vmax = np.max(np.maximum(np.abs(gv.u[:, :, 1].max() + gv.c[:,:]),
+                      np.abs(gv.u[:, :, 1].max() - gv.c[:,:])))
+        
+    # # Compute u_mag
+    # u_mag = np.sqrt(gv.u[:, :, 0]**2 + gv.u[:, :, 1]**2)
 
-    # Calculate umax considering both (u + c) and (u - c)
-    umax = np.max(np.maximum(np.abs(u_mag + gv.c[:, :]), np.abs(u_mag - gv.c[:, :])))
+    # # Calculate umax considering both (u + c) and (u - c)
+    # umax = np.max(np.maximum(np.abs(u_mag + gv.c[:, :]), np.abs(u_mag - gv.c[:, :])))
     
     # Update time step
-    gv.dt = CFL / (umax / gv.cell_dx + umax / gv.cell_dy.min())
+    gv.dt = CFL / (umax / gv.cell_dx + vmax / gv.cell_dy.min())
 
     # Update time
     gv.time += gv.dt
