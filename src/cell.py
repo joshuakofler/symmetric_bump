@@ -37,16 +37,16 @@ def initialize():
 def calculate_inlet_properties():
 
     # # stagnation temperature
-    T_0 = ATMOSPHERIC_TEMPERATURE * (1 + (HEAT_CAPACITY_RATIO - 1)/2 * UPSTREAM_MACH_NUMBER**2)
+    gv.T_0 = ATMOSPHERIC_TEMPERATURE * (1 + (HEAT_CAPACITY_RATIO - 1)/2 * UPSTREAM_MACH_NUMBER**2)
     # # stagnation pressure
-    p_0 = ATMOSPHERIC_PRESSURE * (1 + (HEAT_CAPACITY_RATIO - 1)/2 * UPSTREAM_MACH_NUMBER**2)**(HEAT_CAPACITY_RATIO/(HEAT_CAPACITY_RATIO-1))
+    gv.p_0 = ATMOSPHERIC_PRESSURE * (1 + (HEAT_CAPACITY_RATIO - 1)/2 * UPSTREAM_MACH_NUMBER**2)**(HEAT_CAPACITY_RATIO/(HEAT_CAPACITY_RATIO-1))
 
-    # T_0 = ATMOSPHERIC_TEMPERATURE
-    # p_0 = ATMOSPHERIC_PRESSURE
+    #T_0 = ATMOSPHERIC_TEMPERATURE
+    #p_0 = ATMOSPHERIC_PRESSURE
 
-    gv.rho_infty[:] = p_0 / (GAS_CONSTANT * T_0)
+    gv.rho_infty[:] = gv.p_0 / (GAS_CONSTANT * gv.T_0)
 
-    gv.c_infty[:] = np.sqrt(HEAT_CAPACITY_RATIO * GAS_CONSTANT * T_0)
+    gv.c_infty[:] = np.sqrt(HEAT_CAPACITY_RATIO * GAS_CONSTANT * gv.T_0)
     
     gv.u_infty[:] = UPSTREAM_MACH_NUMBER * gv.c_infty
     return None

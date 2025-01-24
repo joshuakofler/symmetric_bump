@@ -61,6 +61,9 @@ rho_infty = np.zeros([NUM_CELLS_Y])
 c_infty = np.zeros([NUM_CELLS_Y])
 u_infty = np.zeros([NUM_CELLS_Y])
 
+T_0 = 0
+p_0 = 0
+
 f = np.zeros([NUM_CELLS_X, NUM_CELLS_Y, 4], 'd')
 g = np.zeros([NUM_CELLS_X, NUM_CELLS_Y, 4], 'd')
 

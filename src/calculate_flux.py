@@ -110,7 +110,8 @@ def update_flux(state_vector):
 
     T_in = c_in**2 / (HEAT_CAPACITY_RATIO * GAS_CONSTANT)
     
-    rho_in = np.power(gv.rho_infty**HEAT_CAPACITY_RATIO * GAS_CONSTANT * T_in / ATMOSPHERIC_PRESSURE ,1/(HEAT_CAPACITY_RATIO-1))
+    #rho_in = np.power(gv.rho_infty**HEAT_CAPACITY_RATIO * GAS_CONSTANT * T_in / ATMOSPHERIC_PRESSURE ,1/(HEAT_CAPACITY_RATIO-1))
+    rho_in = np.power(gv.rho_infty**HEAT_CAPACITY_RATIO * GAS_CONSTANT * T_in / gv.p_0, 1/(HEAT_CAPACITY_RATIO-1))
 
     p_in = rho_in * GAS_CONSTANT * T_in
 
@@ -122,7 +123,8 @@ def update_flux(state_vector):
     gv.F[0,:,3,3] = rho_in * u_in * H_in * gv.ndS[0, :, 3, 0]        # Energy flux in x-direction
 
     # east flux at outlet
-    p_out = ATMOSPHERIC_PRESSURE * np.ones(NUM_CELLS_Y, 'd')
+    #p_out = ATMOSPHERIC_PRESSURE * np.ones(NUM_CELLS_Y, 'd')
+    p_out = gv.p_0 * np.ones(NUM_CELLS_Y, 'd')
     
     rho_out = gv.rho[-1, :] * np.power((p_out[:] / gv.p[-1, :]), 1/HEAT_CAPACITY_RATIO)
 
