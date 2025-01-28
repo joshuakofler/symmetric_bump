@@ -1,4 +1,4 @@
-# TODO: Check south flux at the bottom wall! 
+# TODO: Done
 
 from constants import *
 import global_vars as gv
@@ -8,14 +8,14 @@ import calculate_artificial_dissipation as ad
 def update_flux(state_vector):
     # Update the flux vector components (f) in the x-direction
     gv.f[:, :, 0] = gv.rho[:,:] * gv.u[:,:,0]                 # Mass flux (density)
-    gv.f[:, :, 1] = gv.rho[:,:] * gv.u[:,:,0]**2 + gv.p[:,:]     # Momentum flux in x-direction
+    gv.f[:, :, 1] = gv.rho[:,:] * np.power(gv.u[:,:,0],2) + gv.p[:,:]     # Momentum flux in x-direction
     gv.f[:, :, 2] = gv.rho[:,:] * gv.u[:,:,0] * gv.u[:,:,1]      # Momentum flux in y-direction
     gv.f[:, :, 3] = gv.rho[:,:] * gv.u[:,:,0] * gv.H[:,:]        # Energy flux in x-direction
 
     # Update the flux vector components (g) in the y-direction
     gv.g[:, :, 0] = gv.rho[:,:] * gv.u[:,:,1]                 # Mass flux (density)
     gv.g[:, :, 1] = gv.rho[:,:] * gv.u[:,:,0] * gv.u[:,:,1]      # Momentum flux in x-direction
-    gv.g[:, :, 2] = gv.rho[:,:] * gv.u[:,:,1]**2 + gv.p[:,:]     # Momentum flux in y-direction
+    gv.g[:, :, 2] = gv.rho[:,:] * np.power(gv.u[:,:,1], 2) + gv.p[:,:]     # Momentum flux in y-direction
     gv.g[:, :, 3] = gv.rho[:,:] * gv.u[:,:,1] * gv.H[:,:]        # Energy flux in y-direction
 
     # # Calculate the interior fluxes at the east face (index 1) using vectorized operations.
@@ -64,8 +64,8 @@ def update_flux(state_vector):
         # East face (index 1) flux calculation
         # Average the values of f and g between adjacent cells and scale by
         # the normal vector components at the east face.
-        gv.F[i,j,1,:] = (0.5 * (gv.f[i,j,:] + gv.f[i+1,j,:]) * gv.ndS[i,j,1,0]
-                       + 0.5 * (gv.g[i,j,:] + gv.g[i+1,j,:]) * gv.ndS[i,j,1,1])
+        gv.F[i,j,1,:] = (0.5 * (gv.f[i,j,:] + gv.f[i+1,j,:]) * gv.ndS[i,j,1,0])
+                       #+ 0.5 * (gv.g[i,j,:] + gv.g[i+1,j,:]) * gv.ndS[i,j,1,1])
 
         # Copy the calculated flux directly to the west face (index 3) of the neighbor cell.
         gv.F[i+1,j,3,:] = -gv.F[i,j,1,:]
@@ -85,63 +85,62 @@ def update_flux(state_vector):
     # Boundary treatment
     #######################################################################
     
-    # north flux at top wall
-    # v = 0
-    # (f[0] * (yC - yB) - g[0] * (xC - xB)) where yC-yB = 0 and g[0] = 0
+    # North flux (gn) at the top wall (i, j = NUM_CELLS_Y-1)
     gv.F[:, -1, 2, 0] = 0.0
     gv.F[:, -1, 2, 1] = 0.0
     gv.F[:, -1, 2, 2] = gv.p[:, -1] * gv.ndS[:, -1, 2, 1]
     gv.F[:, -1, 2, 3] = 0.0
-    
-    # south flux at bottom wall
-    # vn = 0
 
+    # South flux (fs, gs) at the bottom wall (i, j = 0)
     gv.F[:, 0, 0, 0] = 0.0
     gv.F[:, 0, 0, 1] = gv.p[:, 0] * gv.ndS[:, 0, 0, 0]
     gv.F[:, 0, 0, 2] = gv.p[:, 0] * gv.ndS[:, 0, 0, 1]
     gv.F[:, 0, 0, 3] = 0.0
     
-    # west flux at inlet
-    v_in = 0
-
+    # West flux (fw) at the inlet cell (i = 0, j)
+    # Set y-velocity component at inlet to 0
+    # v_in = 0
+    # Calculate speed of sound at inlet (c_in)
     c_in = (HEAT_CAPACITY_RATIO - 1) / 4 * (gv.u_infty - gv.u[0,:,0]) + 0.5 * (gv.c_infty + gv.c[0,:])
-
-    u_in = gv.u[0,:,0] + 2 / (HEAT_CAPACITY_RATIO - 1) * (gv.c_infty - gv.c[0,:])
-
+    # Calculate inlet velocity (u_in)
+    u_in = gv.u[0,:,0] + 2 / (HEAT_CAPACITY_RATIO - 1) * (c_in - gv.c[0,:])
+    # Calculate inlet temperature (T_in)
     T_in = c_in**2 / (HEAT_CAPACITY_RATIO * GAS_CONSTANT)
-    
-    #rho_in = np.power(gv.rho_infty**HEAT_CAPACITY_RATIO * GAS_CONSTANT * T_in / ATMOSPHERIC_PRESSURE ,1/(HEAT_CAPACITY_RATIO-1))
-    rho_in = np.power(gv.rho_infty**HEAT_CAPACITY_RATIO * GAS_CONSTANT * T_in / gv.p_0, 1/(HEAT_CAPACITY_RATIO-1))
-
+    # Calculate inlet density (rho_in)
+    rho_in = np.power(GAS_CONSTANT * T_in * gv.rho_infty**HEAT_CAPACITY_RATIO / gv.p_infty, 1/(HEAT_CAPACITY_RATIO-1))
+    # Calculate inlet pressure (p_in)
     p_in = rho_in * GAS_CONSTANT * T_in
+    # Calculate inlet enthalpy (H_in)
+    H_in = SPECIFIC_HEAT_CP * T_in + 0.5 * (np.power(u_in, 2)) # + np.power(v_in,2))
 
-    H_in = SPECIFIC_HEAT_CP * T_in + 0.5 * (u_in**2 + v_in**2)
+    # West flux (fw) at the inlet cell (i = 0, j)
+    gv.F[0,:,3,0] = rho_in * u_in * gv.ndS[0, :, 3, 0]                          # Mass flux (density)
+    gv.F[0,:,3,1] = (rho_in * np.power(u_in, 2) + p_in) * gv.ndS[0, :, 3, 0]    # Momentum flux in x-direction
+    gv.F[0,:,3,2] = 0 # rho_in * u_in * v_in * gv.ndS[0, :, 3, 0]               # Momentum flux in y-direction
+    gv.F[0,:,3,3] = rho_in * u_in * H_in * gv.ndS[0, :, 3, 0]                   # Energy flux in x-direction
 
-    gv.F[0,:,3,0] = rho_in * u_in * gv.ndS[0, :, 3, 0]               # Mass flux (density)
-    gv.F[0,:,3,1] = (rho_in * u_in**2 + p_in) * gv.ndS[0, :, 3, 0]   # Momentum flux in x-direction
-    gv.F[0,:,3,2] = rho_in * u_in * v_in * gv.ndS[0, :, 3, 0]        # Momentum flux in y-direction
-    gv.F[0,:,3,3] = rho_in * u_in * H_in * gv.ndS[0, :, 3, 0]        # Energy flux in x-direction
-
-    # east flux at outlet
-    #p_out = ATMOSPHERIC_PRESSURE * np.ones(NUM_CELLS_Y, 'd')
-    p_out = gv.p_0 * np.ones(NUM_CELLS_Y, 'd')
-    
+    # East flux (fe) at the outlet cell (i = NUM_CELLS_X-1, j)
+    # Set outlet pressure (p_out) to atmospheric pressure
+    p_out = ATMOSPHERIC_PRESSURE * np.ones(NUM_CELLS_Y, 'd')
+    #p_out = gv.p[-1, :]
+    # Calculate outlet density (rho_out)
     rho_out = gv.rho[-1, :] * np.power((p_out[:] / gv.p[-1, :]), 1/HEAT_CAPACITY_RATIO)
-
+    # Calculate outlet temperature (T_out)
     T_out = p_out/(rho_out * GAS_CONSTANT)
-
+    # Calculate speed of sound at outlet (c_out)
     c_out = np.sqrt(HEAT_CAPACITY_RATIO * GAS_CONSTANT * T_out)
-
+    # Calculate streamwise velocity at outlet (u_out)
     u_out = gv.u[-1, :, 0] + 2 / (HEAT_CAPACITY_RATIO - 1) * (gv.c[-1, :] - c_out)
-
+    # Set y-velocity (v_out) equal to the adjacent cell's value
     v_out = gv.u[-1, :, 1]
+    # Calculate outlet enthalpy (H_out)
+    H_out = SPECIFIC_HEAT_CP * T_out + 0.5 * (np.power(u_out, 2) + np.power(v_out, 2))
 
-    H_out = SPECIFIC_HEAT_CP * T_out + 0.5 * (u_out**2 + v_out**2)
-
-    gv.F[-1,:,1,0] = rho_out * u_out * gv.ndS[-1, :, 1, 0]                # Mass flux (density)
-    gv.F[-1,:,1,1] = (rho_out * u_out**2 + p_out) * gv.ndS[-1, :, 1, 0]   # Momentum flux in x-direction
-    gv.F[-1,:,1,2] = rho_out * u_out * v_out * gv.ndS[-1, :, 1, 0]        # Momentum flux in y-direction
-    gv.F[-1,:,1,3] = rho_out * u_out * H_out * gv.ndS[-1, :, 1, 0]        # Energy flux in x-direction
+    # East flux (fe) at the outlet cell (i = NUM_CELLS_X-1, j)
+    gv.F[-1,:,1,0] = rho_out * u_out * gv.ndS[-1, :, 1, 0]                          # Mass flux (density)
+    gv.F[-1,:,1,1] = (rho_out * np.power(u_out, 2) + p_out) * gv.ndS[-1, :, 1, 0]   # Momentum flux in x-direction
+    gv.F[-1,:,1,2] = rho_out * u_out * v_out * gv.ndS[-1, :, 1, 0]                  # Momentum flux in y-direction
+    gv.F[-1,:,1,3] = rho_out * u_out * H_out * gv.ndS[-1, :, 1, 0]                  # Energy flux in x-direction
 
     #######################################################################
     # Add artificial dissipation
