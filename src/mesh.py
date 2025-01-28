@@ -39,7 +39,7 @@ def get_vertex_coordinates(cell_x_index, cell_y_index, vertex):
     Args:
         cell_x_index (int): Index of the cell along the x-axis.
         cell_y_index (int): Index of the cell along the y-axis.
-        vertex (str): Direction of the point ("SW", "NW", "NE", "SE") or ("A", "B", "C", "D").
+        vertex (str): Direction of the point ("SE", "NE", "NW", "SW") or ("A", "B", "C", "D").
 
     Returns:
         np.ndarray: [x-coordinate, y-coordinate] of the cell edge point.
@@ -48,17 +48,16 @@ def get_vertex_coordinates(cell_x_index, cell_y_index, vertex):
         ValueError: If the direction argument is invalid.
     """
     try:
-        match vertex:
-            case ("SW" | "A"):  # Southwest or direction A
-                return np.array([gv.face_x_coords[cell_x_index + 1], gv.face_y_coords[cell_x_index + 1, cell_y_index]])
-            case ("NW" | "B"):  # Northwest or direction B
-                return np.array([gv.face_x_coords[cell_x_index + 1], gv.face_y_coords[cell_x_index + 1, cell_y_index + 1]])
-            case ("NE" | "C"):  # Northeast or direction C
-                return np.array([gv.face_x_coords[cell_x_index], gv.face_y_coords[cell_x_index, cell_y_index + 1]])
-            case ("SE" | "D"):  # Southeast or direction D
-                return np.array([gv.face_x_coords[cell_x_index], gv.face_y_coords[cell_x_index, cell_y_index]])
-            case _:  # Invalid direction
-                raise ValueError("Invalid direction argument: direction must be 'SW', 'NW', 'NE', 'SE'.")
+        if (vertex == "SE" or vertex == "A"): # Southeast or direction A
+            return np.array([gv.face_x_coords[cell_x_index + 1], gv.face_y_coords[cell_x_index + 1, cell_y_index]])
+        elif (vertex == "NE" or vertex == "B"): # Northeast or direction B
+            return np.array([gv.face_x_coords[cell_x_index + 1], gv.face_y_coords[cell_x_index + 1, cell_y_index + 1]])
+        elif (vertex == "NW" or vertex == "C"): # Northwest or direction C
+            return np.array([gv.face_x_coords[cell_x_index], gv.face_y_coords[cell_x_index, cell_y_index + 1]])
+        elif (vertex == "SW" or vertex == "D"): # Southwest or direction D
+            return np.array([gv.face_x_coords[cell_x_index], gv.face_y_coords[cell_x_index, cell_y_index]])
+        else: # Invalid direction
+            raise ValueError("Invalid direction argument: direction must be 'SE', 'NE', 'NW', 'SW'.")
     except ValueError as error:
         print(f"Error: {error}")
         return None
@@ -103,51 +102,50 @@ def get_normal_vector(cell_x_index, cell_y_index, face):
 
     try:
         # Calculate dx and dy based on the specified direction
-        match face:
-            case "S":
-                # Get the coordinates of points A and D
-                [x_point_a, y_point_a] = get_vertex_coordinates(cell_x_index, cell_y_index, 'A')
-                [x_point_d, y_point_d] = get_vertex_coordinates(cell_x_index, cell_y_index, 'D')
-                
-                # Calculate the vector components (yA - yD, -(xA - xD))
-                vector = np.array([
-                    (y_point_a - y_point_d),  # x-component
-                    -(x_point_a - x_point_d)  # y-component
-                ])
-            case "E":
-                # Get the coordinates of points A and B
-                [x_point_a, y_point_a] = get_vertex_coordinates(cell_x_index, cell_y_index, 'A')
-                [x_point_b, y_point_b] = get_vertex_coordinates(cell_x_index, cell_y_index, 'B')
+        if face == "S":
+            # Get the coordinates of points A and D
+            [x_point_a, y_point_a] = get_vertex_coordinates(cell_x_index, cell_y_index, 'A')
+            [x_point_d, y_point_d] = get_vertex_coordinates(cell_x_index, cell_y_index, 'D')
+            
+            # Calculate the vector components (yA - yD, -(xA - xD))
+            vector = np.array([
+                (y_point_a - y_point_d),  # x-component
+                -(x_point_a - x_point_d)  # y-component
+            ])
+        elif face == "E":
+            # Get the coordinates of points A and B
+            [x_point_a, y_point_a] = get_vertex_coordinates(cell_x_index, cell_y_index, 'A')
+            [x_point_b, y_point_b] = get_vertex_coordinates(cell_x_index, cell_y_index, 'B')
 
-                # Calculate the vector components (yB - yA, -(xB - xA))
-                vector = np.array([
-                    (y_point_b - y_point_a),  # x-component
-                    -(x_point_b - x_point_a)  # y-component
-                ])
-            case "N":
-                # Get the coordinates of points B and C
-                [x_point_b, y_point_b] = get_vertex_coordinates(cell_x_index, cell_y_index, 'B')
-                [x_point_c, y_point_c] = get_vertex_coordinates(cell_x_index, cell_y_index, 'C')
-                
-                # Calculate the vector components (yC - yB, -(xC - xB))
-                vector = np.array([
-                    (y_point_c - y_point_b),  # x-component
-                    -(x_point_c - x_point_b)  # y-component
-                ])
-            case "W":            
-                # Get the coordinates of points C and D
-                [x_point_c, y_point_c] = get_vertex_coordinates(cell_x_index, cell_y_index, 'C')
-                [x_point_d, y_point_d] = get_vertex_coordinates(cell_x_index, cell_y_index, 'D')
-                
-                # Calculate the vector components (yD - yC, -(xD - xC))
-                vector = np.array([
-                    (y_point_d - y_point_c),  # x-component
-                    -(x_point_d - x_point_c)  # y-component
-                ])
+            # Calculate the vector components (yB - yA, -(xB - xA))
+            vector = np.array([
+                (y_point_b - y_point_a),  # x-component
+                -(x_point_b - x_point_a)  # y-component
+            ])
+        elif face == "N":
+            # Get the coordinates of points B and C
+            [x_point_b, y_point_b] = get_vertex_coordinates(cell_x_index, cell_y_index, 'B')
+            [x_point_c, y_point_c] = get_vertex_coordinates(cell_x_index, cell_y_index, 'C')
+            
+            # Calculate the vector components (yC - yB, -(xC - xB))
+            vector = np.array([
+                (y_point_c - y_point_b),  # x-component
+                -(x_point_c - x_point_b)  # y-component
+            ])
+        elif face == "W":            
+            # Get the coordinates of points C and D
+            [x_point_c, y_point_c] = get_vertex_coordinates(cell_x_index, cell_y_index, 'C')
+            [x_point_d, y_point_d] = get_vertex_coordinates(cell_x_index, cell_y_index, 'D')
+            
+            # Calculate the vector components (yD - yC, -(xD - xC))
+            vector = np.array([
+                (y_point_d - y_point_c),  # x-component
+                -(x_point_d - x_point_c)  # y-component
+            ])
 
             # If the direction is not valid, handle it below
-            case _:
-                raise ValueError(f"Invalid direction: {face}. Must be one of 'S', 'W', 'N', or 'E'.")
+        else:
+            raise ValueError(f"Invalid direction: {face}. Must be one of 'S', 'W', 'N', or 'E'.")
                             
         # Compute the magnitude (Euclidean norm) of the vector
         magnitude = np.sqrt(vector[0]**2 + vector[1]**2)
