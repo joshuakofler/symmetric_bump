@@ -185,41 +185,41 @@ def update_artificial_dissipation_simple(state_vector):
 
     return None
 
-def update_artificial_dissipation_WIP():
+# this function also accounts for shocks
+def update_artificial_dissipation_WIP(state_vector):
     
-    calculate_eta()
+    calculate_coefficient_WIP()
 
     # east/west
     for i, j in np.ndindex(NUM_CELLS_X-1, NUM_CELLS_Y):
         #artificial_dissipation[i,j,1] = a_d_coefficient_gamma[i,j,1] * (state_vector[i+1,j] - state_vector[i, j])
         # If artificial_dissipation is multi-component
-        gv.artificial_dissipation[i, j, 1, :] = (gv.a_d_coefficient_eta[i, j, 1] * (gv.state_vector[i + 1, j, :] - gv.state_vector[i, j, :])
-                                                + gv.a_d_coefficient_gamma[i, j, 1] * (gv.state_vector[i + 1, j, :] - gv.state_vector[i, j, :]))
+        gv.artificial_dissipation[i, j, 1, :] = (gv.a_d_coefficient_eta[i, j, 1] * (state_vector[i + 1, j, :] - state_vector[i, j, :])
+                                                + gv.a_d_coefficient_gamma[i, j, 1] * (state_vector[i + 1, j, :] - state_vector[i, j, :]))
         # the sign is overseen in the calculate flux
         gv.artificial_dissipation[i + 1, j, 3, :] = gv.artificial_dissipation[i, j, 1, :]
 
     # north/south
     for i, j in np.ndindex(NUM_CELLS_X, NUM_CELLS_Y-1):
         # North AD 
-        gv.artificial_dissipation[i, j, 2, :] = (gv.a_d_coefficient_eta[i, j, 2] * (gv.state_vector[i, j + 1, :] - gv.state_vector[i, j, :])
-                                                + gv.a_d_coefficient_gamma[i, j, 2] * (gv.state_vector[i, j + 1, :] - gv.state_vector[i, j, :]))
+        gv.artificial_dissipation[i, j, 2, :] = (gv.a_d_coefficient_eta[i, j, 2] * (state_vector[i, j + 1, :] - state_vector[i, j, :])
+                                                + gv.a_d_coefficient_gamma[i, j, 2] * (state_vector[i, j + 1, :] - state_vector[i, j, :]))
 
         gv.artificial_dissipation[i, j+1, 0, :] = gv.artificial_dissipation[i, j, 2, :]
     
     # south artificial dissipation at bottom boundary
-    gv.artificial_dissipation[:, 0, 0] = 0
+    gv.artificial_dissipation[:, 0, 0] = gv.artificial_dissipation[:, 0, 2]
     # north artificial dissipation at top boundary
-    gv.artificial_dissipation[:, -1, 2] = 0
+    gv.artificial_dissipation[:, -1, 2] = gv.artificial_dissipation[:, -1, 0]
     # west artificial dissipation at inlet boundary
-    gv.artificial_dissipation[0, :, 3] = 0
+    gv.artificial_dissipation[0, :, 3] = gv.artificial_dissipation[0, :, 1]
     # east artificial dissipation at outlet boundary
-    gv.artificial_dissipation[-1, :, 1] = 0
+    gv.artificial_dissipation[-1, :, 1] = gv.artificial_dissipation[-1, :, 3]
 
     return None
 
-def calculate_eta():
-
-    for i, j in np.ndindex(NUM_CELLS_X-1, NUM_CELLS_Y-1):
+def calculate_coefficient_WIP():
+    for i, j in np.ndindex(NUM_CELLS_X - 1, NUM_CELLS_Y - 1):
         gv.nu[i, j] = np.abs(
             (gv.p[i + 1, j] - 2 * gv.p[i, j] + gv.p[i - 1, j]) /
             (gv.p[i + 1, j] + 2 * gv.p[i, j] + gv.p[i - 1, j])
@@ -227,36 +227,50 @@ def calculate_eta():
     
     for i in range(NUM_CELLS_X - 1):
         for j in range(NUM_CELLS_Y):
-            #max_mu = max(gv.nu[i-1,j], gv.nu[i,j], gv.nu[i+1,j], gv.nu[i+2,j])
+            # calculate maximum nu for the artificial dissipation (simple)
             max_mu = max(gv.nu[i, j], gv.nu[i+1, j])
             # calculate the west
-
             temp = (np.abs(0.5 * (gv.u[i, j, 0] + gv.u[i + 1, j, 0]) * gv.ndS[i, j, 1, 0]
                          + 0.5 * (gv.u[i, j, 1] + gv.u[i + 1, j, 1]) * gv.ndS[i, j, 1, 1])
                          + 0.5 * (gv.c[i, j] + gv.c[i + 1, j]) * np.abs(np.sqrt(gv.ndS[i, j, 1, 0]**2 + gv.ndS[i, j, 1, 1]**2)))
 
             gv.a_d_coefficient_eta[i, j, 1] = 0.5 * ARTIFICIAL_DISSIPATION_KAPPA_2 * temp * max_mu
+            # calculate the east
             gv.a_d_coefficient_eta[i + 1, j, 3] = gv.a_d_coefficient_eta[i, j, 1]
 
+            # calculate the west
             gv.a_d_coefficient_gamma[i, j, 1] = max(0, 
                                                     0.5 * ARTIFICIAL_DISSIPATION_KAPPA_4 * temp - gv.a_d_coefficient_eta[i, j, 1])
+            # calculate the east
             gv.a_d_coefficient_gamma[i + 1, j, 3] = gv.a_d_coefficient_gamma[i, j, 1]
 
-    for i in range(NUM_CELLS_X-1):
-        for j in range(NUM_CELLS_Y-1):
-            #max_mu = max(gv.nu[i-1,j], gv.nu[i,j], gv.nu[i+1,j], gv.nu[i+2,j])
-            max_mu = max(gv.nu[i, j], gv.nu[i+1, j])
-            # calculate the west
-
+    for i in range(NUM_CELLS_X):
+        for j in range(NUM_CELLS_Y - 1):
+            # calculate maximum nu for the artificial dissipation (simple)
+            max_mu = np.maximum(gv.nu[i, j], gv.nu[i, j+1])
+            # calculate the north
             temp = (np.abs(0.5 * (gv.u[i, j, 0] + gv.u[i, j + 1, 0]) * gv.ndS[i, j, 2, 0]
                          + 0.5 * (gv.u[i, j, 1] + gv.u[i, j + 1, 1]) * gv.ndS[i, j, 2, 1])
                          + 0.5 * (gv.c[i, j] + gv.c[i, j + 1]) * np.abs(np.sqrt(gv.ndS[i, j, 2, 0]**2 + gv.ndS[i, j, 2, 1]**2)))
 
             gv.a_d_coefficient_eta[i, j, 2] = 0.5 * ARTIFICIAL_DISSIPATION_KAPPA_2 * temp * max_mu
+            # calculate the south
             gv.a_d_coefficient_eta[i, j + 1, 0] = gv.a_d_coefficient_eta[i, j, 2]
-
+            # calculate the north
             gv.a_d_coefficient_gamma[i, j, 2] = max(0, 
                                                     0.5 * ARTIFICIAL_DISSIPATION_KAPPA_4 * temp - gv.a_d_coefficient_eta[i, j, 2])
+            # calculate the south
             gv.a_d_coefficient_gamma[i, j + 1, 0] = gv.a_d_coefficient_gamma[i, j, 2]
+
+    # now calculate the artificial dissipation coefficents at the boundaries
+
+    # south artificial dissipation coefficent (BOTTOM boundary) 
+    gv.a_d_coefficient_gamma[:, 0, 0] = 0
+    # north artificial dissipation coefficent (TOP boundary) 
+    gv.a_d_coefficient_gamma[:, -1, 2] = 0
+    # west artificial dissipation coefficent (inlet boundary) 
+    gv.a_d_coefficient_gamma[0, :, 3] = 0
+    # east artificial dissipation coefficent (outlet boundary) 
+    gv.a_d_coefficient_gamma[-1, :, 1] = 0
 
     return None
