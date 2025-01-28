@@ -17,10 +17,7 @@ def initialize():
     gv.rho[:,:] = gv.rho_infty
 
     gv.u[:,:,0] = gv.u_infty
-
-    gv.u[:,:,1] = 0.01
-    gv.u[:,0,1] = 0.0
-    gv.u[:,-1,1] = 0.0
+    gv.u[:,:,1] = 0.0
 
     e_init = SPECIFIC_HEAT_CV * ATMOSPHERIC_TEMPERATURE
     gv.E[:,:] = e_init + 0.5 * (gv.u[:,:,0]**2 + gv.u[:,:,1]**2)
@@ -32,23 +29,22 @@ def initialize():
 
     update_cell_properties(gv.state_vector)
 
+    update_in_out_massflow()
+
     return None
 
 def calculate_inlet_properties():
+    # stagnation temperature
+    gv.T_infty = ATMOSPHERIC_TEMPERATURE * (1 + (HEAT_CAPACITY_RATIO - 1)/2 * np.power(UPSTREAM_MACH_NUMBER,2))
+    # stagnation pressure
+    gv.p_infty = ATMOSPHERIC_PRESSURE * np.power((1 + (HEAT_CAPACITY_RATIO - 1)/2 * np.power(UPSTREAM_MACH_NUMBER,2)),
+                                                (HEAT_CAPACITY_RATIO/(HEAT_CAPACITY_RATIO-1)))
+    # stagnation density    
+    gv.rho_infty[:] = gv.p_infty / (GAS_CONSTANT * gv.T_infty)
 
-    # # stagnation temperature
-    gv.T_0 = ATMOSPHERIC_TEMPERATURE * (1 + (HEAT_CAPACITY_RATIO - 1)/2 * UPSTREAM_MACH_NUMBER**2)
-    # # stagnation pressure
-    gv.p_0 = ATMOSPHERIC_PRESSURE * (1 + (HEAT_CAPACITY_RATIO - 1)/2 * UPSTREAM_MACH_NUMBER**2)**(HEAT_CAPACITY_RATIO/(HEAT_CAPACITY_RATIO-1))
-
-    #T_0 = ATMOSPHERIC_TEMPERATURE
-    #p_0 = ATMOSPHERIC_PRESSURE
-
-    gv.rho_infty[:] = gv.p_0 / (GAS_CONSTANT * gv.T_0)
-
-    gv.c_infty[:] = np.sqrt(HEAT_CAPACITY_RATIO * GAS_CONSTANT * gv.T_0)
-    
+    gv.c_infty[:] = np.sqrt(HEAT_CAPACITY_RATIO * GAS_CONSTANT * gv.T_infty)
     gv.u_infty[:] = UPSTREAM_MACH_NUMBER * gv.c_infty
+
     return None
 
 def update_cell_properties(state_vector):
@@ -87,6 +83,7 @@ def update_cell_properties(state_vector):
     # Calculate total enthalpy (H)
     gv.H = calculate_total_enthalpy(gv.rho, gv.E, gv.p)
 
+    # Calculate Mach number (M)
     gv.M = calculate_mach_number(gv.u, gv.c)
 
     # No return as this is a function to update values in place
@@ -110,10 +107,10 @@ def update_in_out_massflow():
     """
     
     # Calculates the inlet mass flow for the current iteration
-    gv.m_in[gv.iteration-1] = calculate_massflow(gv.rho, gv.u, 0)
+    gv.m_in[gv.iteration] = calculate_massflow(gv.rho, gv.u, 0)
 
     # Calculates the outlet mass flow for the current iteration
-    gv.m_out[gv.iteration-1] = calculate_massflow(gv.rho, gv.u, NUM_CELLS_X-1)
+    gv.m_out[gv.iteration] = calculate_massflow(gv.rho, gv.u, NUM_CELLS_X-1)
 
     return None
 
@@ -139,7 +136,7 @@ def calculate_internal_energy(E, u):
         np.ndarray: A 2D array of internal energy values per unit mass at each grid point.
     """
     # Calculate the kinetic energy at each point: (u_x^2 + u_y^2) / 2
-    kinetic_energy = 0.5 * (u[:,:,0]**2 + u[:,:,1]**2)
+    kinetic_energy = 0.5 * (np.power(u[:,:,0],2) + np.power(u[:,:,1],2))
     
     # Subtract the kinetic energy from the total energy to get the internal energy
     internal_energy = E - kinetic_energy
@@ -259,7 +256,7 @@ def calculate_mach_number(u, c):
         np.ndarray: The Mach number (M) at each point in the grid, with shape (n, m).
     """
     
-    M = np.sqrt(u[:,:,0]**2 + u[:,:,1]**2) / c[:,:]
+    M = np.sqrt(np.power(u[:,:,0],2) + np.power(u[:,:,1],2)) / c[:,:]
     return M
 
 def calculate_massflow(rho, u, cell_x_index):
@@ -383,33 +380,3 @@ def get_point_data(cell_x_index, cell_y_index, prop):
                     prop[cell_x_index+1, cell_y_index+1],
                     prop[cell_x_index, cell_y_index+1], 
                     prop[cell_x_index, cell_y_index]])
-
-def get_point_data_old(face_x_index, face_y_index):
-    # corners
-    if (face_x_index == 0 and face_y_index == 0):
-        return 0.01#inlet Mach number
-    
-    if (face_x_index == 0 and face_y_index == NUM_FACES_Y-1):
-        return 0.01#inlet Mach number
-    
-    if (face_x_index == NUM_FACES_X-1 and face_y_index == 0):
-        return 0.01#outlet Mach number
-    
-    if (face_x_index == NUM_FACES_X-1 and face_y_index == NUM_FACES_Y-1):
-        return 0.01#outlet Mach number
-    
-    # edges
-    if (face_x_index == 0):
-        return 0.01#inlet Mach number
-    if (face_x_index == NUM_FACES_X-1):
-        return 0.01#outlet Mach number
-    if (face_y_index == 0):
-        return np.mean([gv.M[face_x_index-1, 0], gv.M[face_x_index, 0]])
-    
-    if (face_y_index == NUM_FACES_Y-1):
-        return np.mean([gv.M[face_x_index-1, -1], gv.M[face_x_index, -1]])
-
-    return np.mean([gv.M[face_x_index-1, face_y_index-2], 
-                    gv.M[face_x_index-1, face_y_index-1],
-                    gv.M[face_x_index-2, face_y_index-1], 
-                    gv.M[face_x_index-2, face_y_index-2]])
