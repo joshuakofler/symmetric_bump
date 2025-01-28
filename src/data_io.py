@@ -75,7 +75,6 @@ def save_iteration(iteration):
     vtk_state_vectors.SetNumberOfComponents(4)  # 4 components per point
 
     # Flatten the 3D array (nx, ny, 4) to iterate over all grid points
-    nx, ny, _ = state_vectors.shape
     for i,j in np.ndindex(NUM_CELLS_X, NUM_CELLS_Y):
         # Extract the 4-component vector at (i, j)
         vector = state_vectors[i, j, :]
@@ -83,6 +82,30 @@ def save_iteration(iteration):
 
     # Attach the state vectors to the PolyData
     poly_data.GetPointData().AddArray(vtk_state_vectors)
+    
+    # Add m_in to the PolyData
+    vtk_m_in = vtk.vtkFloatArray()
+    vtk_m_in.SetName("m_in")  # Name for the m_in field
+    vtk_m_in.SetNumberOfComponents(1)  # 1 component per point
+
+    # Ensure that gv.m_in is a list or numpy array with the same length as the number of points
+    for index, value in enumerate(gv.m_in):
+        if(index <= gv.iteration):
+            vtk_m_in.InsertNextValue(value)  # Insert each value of m_in into the vtk array
+
+    poly_data.GetFieldData().AddArray(vtk_m_in)
+
+    # Add m_out to the PolyData
+    vtk_m_out = vtk.vtkFloatArray()
+    vtk_m_out.SetName("m_out")  # Name for the m_out field
+    vtk_m_out.SetNumberOfComponents(1)  # 1 component per point
+
+    # Ensure that gv.m_out is a list or numpy array with the same length as the number of points
+    for index, value in enumerate(gv.m_out):
+        if(index <= gv.iteration):
+            vtk_m_out.InsertNextValue(value)  # Insert each value of m_out into the vtk array
+
+    poly_data.GetFieldData().AddArray(vtk_m_out)
 
     # Create the output directory if it doesn't exist
     iteration_dir = os.path.join(OUTPUT_DIR, str(iteration))
@@ -103,45 +126,49 @@ def save_iteration(iteration):
 
     return None
 
-def read_iteration_file(file_path):
-    """
-    Reads a VTK file (.vtp) and extracts the state vectors and points.
-
-    Args:
-        file_path (str): Path to the VTK file.
-
-    Returns:
-        points (np.ndarray): Array of shape (num_points, 3) with x, y, z coordinates for each point.
-        state_vectors (np.ndarray): Array of shape (num_points, 4) with the state vector for each point.
-    """
-    # Create a reader for the VTP file
+def read_iteration(file_path):
+    # Create a reader for the VTK file
     reader = vtk.vtkXMLPolyDataReader()
     reader.SetFileName(file_path)
     reader.Update()
 
-    # Get the PolyData object
+    # Get the PolyData object from the reader
     poly_data = reader.GetOutput()
-    if poly_data is None:
-        raise FileNotFoundError(f"Failed to read VTK file at {file_path}")
 
-    # Extract the points
+    # Check if the PolyData has points
     vtk_points = poly_data.GetPoints()
-    num_points = vtk_points.GetNumberOfPoints()
-    #points = np.array([vtk_points.GetPoint(i) for i in range(num_points)])
+    if vtk_points is None:
+        print(f"Error: No points found in the VTK file {file_path}.")
+        return None, None, None, None  # Return None to indicate an error
 
-    # Extract the state vector data array
-    state_vectors_array = poly_data.GetPointData().GetArray("StateVector")
-    if state_vectors_array is None:
-        raise ValueError("No 'StateVector' field found in the VTK file.")
+    # Retrieve state vector (assuming it's stored with 4 components)
+    vtk_state_vectors = poly_data.GetPointData().GetArray("StateVector")
+    if vtk_state_vectors is None:
+        print(f"Error: StateVector array not found in the VTK file {file_path}.")
+        state_vectors = None
+    else:
+        state_vectors = np.array([vtk_state_vectors.GetTuple(i) for i in range(vtk_state_vectors.GetNumberOfTuples())])
 
-    # Extract the state vectors
-    state_vectors = np.array([state_vectors_array.GetTuple(i) for i in range(num_points)])
+    state_vector_grid = state_vectors.reshape((NUM_CELLS_X, NUM_CELLS_Y, 4))
+    
+    # Retrieve m_in field
+    vtk_m_in = poly_data.GetFieldData().GetArray("m_in")
+    if vtk_m_in is None:
+        print(f"Warning: m_in array not found in the VTK file {file_path}.")
+        m_in = None  # Handle case if m_in is not present in the file
+    else:
+        m_in = np.array([vtk_m_in.GetValue(i) for i in range(vtk_m_in.GetNumberOfValues())])
 
-    # Reshape state_vectors to the shape 
-    state_vectors_grid = state_vectors.reshape((NUM_CELLS_X, NUM_CELLS_Y, 4))
+    # Retrieve m_out field
+    vtk_m_out = poly_data.GetFieldData().GetArray("m_out")
+    if vtk_m_out is None:
+        print(f"Warning: m_out array not found in the VTK file {file_path}.")
+        m_out = None  # Handle case if m_out is not present in the file
+    else:
+        m_out = np.array([vtk_m_out.GetValue(i) for i in range(vtk_m_out.GetNumberOfValues())])
 
-    print(f"Successfully read {num_points} points and state vectors from {file_path}")
-    return state_vectors_grid
+    # Optionally, you can return the retrieved data for further processing
+    return state_vector_grid, m_in, m_out
 
 def simplify_file_path(file_path, base_path):
     """Simplify the file path by stripping the base path."""
