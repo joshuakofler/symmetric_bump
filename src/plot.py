@@ -16,12 +16,13 @@ import mesh
 def plot_convergence_history(fig):
     ax = fig.gca()
 
-    iterations = np.linspace(1, gv.iteration + 1, gv.iteration)
+    iterations = np.linspace(0, gv.iteration + 1, gv.iteration+1)
 
     ax.plot(iterations, gv.m_in[:], 'k', label=r"Inlet mass flow")
     ax.plot(iterations, gv.m_out[:], '--k', label=r"Outlet mass flow")
 
     ax.set_xlim([1, gv.iteration + 1])
+    ax.set_ylim([0.999 * min(gv.m_in.min(), gv.m_out.min()), 1.001 * max(gv.m_in.max(), gv.m_out.max())])
 
     ax.set_xlabel("Iteration Number", fontsize=10)
     ax.set_ylabel("Mass Flow [kg/m/s]", fontsize=10)
@@ -38,7 +39,8 @@ def plot_convergence_history(fig):
     ax.legend(loc="lower right", fontsize=10)
 
     # Save the plot to a file
-    file_path = os.path.join(OUTPUT_DIR, f"convergence_history_{gv.iteration}.pdf")
+    iteration_dir = os.path.join(OUTPUT_DIR, str(gv.iteration))
+    file_path = os.path.join(iteration_dir, f"{gv.iteration}_convergence_history.pdf")
     fig.savefig(file_path, bbox_inches="tight")
     print(f"Plot saved at: {file_path}")
 
@@ -69,7 +71,6 @@ def plot_cell_data(fig, fluid_property, property_name, acronym = "DEFAULT"):
         
         # Create a writer to save the data to a file
         file_path = os.path.join(iteration_dir, f"{gv.iteration}_C_{acronym}_{NUM_CELLS_X}_{NUM_CELLS_Y}.pdf")
-        print(f"Saving plot to: {file_path}")
     #----------------------------------------------------------------------------------
 
     if show_vertical_grid:
@@ -157,7 +158,6 @@ def plot_face_data(fig, fluid_property, property_name, acronym = "DEFAULT"):
         
         # Create a writer to save the data to a file
         file_path = os.path.join(iteration_dir, f"{gv.iteration}_F_{acronym}_{NUM_CELLS_X}_{NUM_CELLS_Y}.pdf")
-        print(f"Saving plot to: {file_path}")
     #----------------------------------------------------------------------------------
 
     if show_vertical_grid:

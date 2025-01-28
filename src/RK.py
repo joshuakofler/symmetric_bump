@@ -1,7 +1,6 @@
 #%%
 # This module uses a RK-scheme to calculate the next timestep
 
-from sre_parse import State
 from constants import *
 import global_vars as gv
 
@@ -79,11 +78,9 @@ def run_iteration():
 
 def calculate_timestep():
     
-    umax = np.max(np.maximum(np.abs(gv.u[:, :, 0].max() + gv.c[:,:]),
-                      np.abs(gv.u[:, :, 0].max() - gv.c[:,:])))
+    umax = np.max(np.maximum(np.abs(gv.u[:, :, 0].max() + gv.c[:,:]), np.abs(gv.u[:, :, 0].max() - gv.c[:,:])))
     
-    vmax = np.max(np.maximum(np.abs(gv.u[:, :, 1].max() + gv.c[:,:]),
-                      np.abs(gv.u[:, :, 1].max() - gv.c[:,:])))
+    vmax = np.max(np.maximum(np.abs(gv.u[:, :, 1].max() + gv.c[:,:]), np.abs(gv.u[:, :, 1].max() - gv.c[:,:])))
         
     # # Compute u_mag
     # u_mag = np.sqrt(gv.u[:, :, 0]**2 + gv.u[:, :, 1]**2)

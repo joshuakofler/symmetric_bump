@@ -11,7 +11,7 @@ PROJECT_DIR = CURRENT_DIR.parent
 # Go one level up and then append 'output' to the path
 OUTPUT_DIR = PROJECT_DIR / "output"
 
-MAX_ITERATIONS = 500
+MAX_ITERATIONS = 5
 
 # Computational domain dimensions
 DOMAIN_LENGTH = 1  # Base length scale

@@ -52,17 +52,16 @@ M = np.zeros([NUM_CELLS_X, NUM_CELLS_Y], 'd')    # Mach number
 
 # massflow
 # inlet
-m_in = np.zeros([MAX_ITERATIONS], 'd')
+m_in = np.zeros([MAX_ITERATIONS+1], 'd')
 # outlet
-m_out = np.zeros([MAX_ITERATIONS], 'd')
+m_out = np.zeros([MAX_ITERATIONS+1], 'd')
 
 # Upstream fluid values
+p_infty = np.zeros([NUM_CELLS_Y])
+T_infty = np.zeros([NUM_CELLS_Y])
 rho_infty = np.zeros([NUM_CELLS_Y])
 c_infty = np.zeros([NUM_CELLS_Y])
 u_infty = np.zeros([NUM_CELLS_Y])
-
-T_0 = 0
-p_0 = 0
 
 f = np.zeros([NUM_CELLS_X, NUM_CELLS_Y, 4], 'd')
 g = np.zeros([NUM_CELLS_X, NUM_CELLS_Y, 4], 'd')
