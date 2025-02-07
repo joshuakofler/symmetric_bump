@@ -98,7 +98,7 @@ def plot_cell_data(fig, fluid_property, property_name, acronym = "DEFAULT"):
 
     # Normalize colormap
     norm = Normalize(vmin=data.min(), vmax=data.max())
-    cmap = plt.cm.inferno
+    cmap = plt.cm.viridis
 
     for i, j in np.ndindex(NUM_CELLS_X, NUM_CELLS_Y):
         # Get cell vertices
@@ -188,7 +188,7 @@ def plot_face_data(fig, fluid_property, property_name, acronym = "DEFAULT"):
 
     # Normalize colormap
     norm = Normalize(vmin=data.min(), vmax=data.max())
-    cmap = plt.cm.inferno
+    cmap = plt.cm.virdis
 
     for i, j in np.ndindex(NUM_CELLS_X-1, NUM_CELLS_Y-1):
         # Get cell vertices
