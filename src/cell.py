@@ -19,7 +19,7 @@ def initialize():
     gv.u[:,:,0] = gv.u_infty
     gv.u[:,:,1] = 0.0
 
-    e_init = SPECIFIC_HEAT_CV * ATMOSPHERIC_TEMPERATURE
+    e_init = SPECIFIC_HEAT_CV * gv.T_infty
     gv.E[:,:] = e_init + 0.5 * (gv.u[:,:,0]**2 + gv.u[:,:,1]**2)
 
     gv.state_vector[:, :, 0] = gv.rho[:,:]
@@ -35,10 +35,10 @@ def initialize():
 
 def calculate_inlet_properties():
     # stagnation temperature
-    gv.T_infty = ATMOSPHERIC_TEMPERATURE * (1 + (HEAT_CAPACITY_RATIO - 1)/2 * np.power(UPSTREAM_MACH_NUMBER,2))
+    gv.T_infty[:] = ATMOSPHERIC_TEMPERATURE / (1 + (HEAT_CAPACITY_RATIO - 1)/2 * np.power(UPSTREAM_MACH_NUMBER,2))
     # stagnation pressure
-    gv.p_infty = ATMOSPHERIC_PRESSURE * np.power((1 + (HEAT_CAPACITY_RATIO - 1)/2 * np.power(UPSTREAM_MACH_NUMBER,2)),
-                                                (HEAT_CAPACITY_RATIO/(HEAT_CAPACITY_RATIO-1)))
+    gv.p_infty[:] = ATMOSPHERIC_PRESSURE / (np.power((1 + (HEAT_CAPACITY_RATIO - 1)/2 * np.power(UPSTREAM_MACH_NUMBER,2)),
+                                                ((HEAT_CAPACITY_RATIO)/(HEAT_CAPACITY_RATIO - 1))))
     # stagnation density    
     gv.rho_infty[:] = gv.p_infty / (GAS_CONSTANT * gv.T_infty)
 
@@ -64,27 +64,27 @@ def update_cell_properties(state_vector):
     """
     # Extract the state variables from the state vector
     gv.rho[:,:] = state_vector[:,:,0]          # Density
-    gv.u[:,:,0] = state_vector[:,:,1] / gv.rho    # x-component of velocity
-    gv.u[:,:,1] = state_vector[:,:,2] / gv.rho    # y-component of velocity
-    gv.E[:,:] = state_vector[:,:,3] / gv.rho      # Total energy
+    gv.u[:,:,0] = state_vector[:,:,1] / gv.rho[:,:]    # x-component of velocity
+    gv.u[:,:,1] = state_vector[:,:,2] / gv.rho[:,:]    # y-component of velocity
+    gv.E[:,:] = state_vector[:,:,3] / gv.rho[:,:]      # Total energy
 
     # Calculate internal energy (e)
-    gv.e = calculate_internal_energy(gv.E, gv.u)
+    gv.e[:,:] = calculate_internal_energy(gv.E, gv.u)
 
     # Calculate temperature (T) based on internal energy
-    gv.T = calculate_temperature(gv.e)
+    gv.T[:,:] = calculate_temperature(gv.e)
 
     # Calculate local speed of sound (c) based on temperature
-    gv.c = calculate_local_speed_of_sound(gv.T)
+    gv.c[:,:] = calculate_local_speed_of_sound(gv.T)
     
     # Calculate pressure (p) from density and temperature
-    gv.p = calculate_pressure(gv.rho, gv.T)
+    gv.p[:,:] = calculate_pressure(gv.rho, gv.T)
 
     # Calculate total enthalpy (H)
-    gv.H = calculate_total_enthalpy(gv.rho, gv.E, gv.p)
+    gv.H[:,:] = calculate_total_enthalpy(gv.rho, gv.E, gv.p)
 
     # Calculate Mach number (M)
-    gv.M = calculate_mach_number(gv.u, gv.c)
+    gv.M[:,:] = calculate_mach_number(gv.u, gv.c)
 
     # No return as this is a function to update values in place
     return None
