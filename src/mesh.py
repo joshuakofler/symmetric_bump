@@ -187,6 +187,25 @@ def _calculate_bump_height(x):
     # Return the computed y0 values
     return y0
 
+def _calculate_bump_height_CArc(x):
+    """
+    Calculate the bump height (y0) as a function of the x-coordinate (Circular arc).
+
+    Args:
+        x (float or ndarray): The x-coordinate(s) at which to compute the bump height.
+
+    Returns:
+        ndarray: An array of computed bump heights (y0) corresponding to the input x-coordinate(s).
+    """
+
+    y0 = np.where(
+        (x < 0) | (x > DOMAIN_LENGTH),  # Condition: x < 0 or x > L
+        0.0,                        # Value when condition is True: y0 will be set to 0
+        np.sqrt(np.maximum(0, np.power(1.3 * DOMAIN_LENGTH, 2) - np.power((x - 0.5 * DOMAIN_LENGTH), 2))) - 1.2 * DOMAIN_LENGTH
+    )
+
+    return y0
+
 def _calculate_cell_area():
     """
     Compute the area of each computational cell in the grid.
@@ -211,13 +230,14 @@ def _calculate_cell_area():
     try:
         for cell_x_index, cell_y_index in np.ndindex(NUM_CELLS_X, NUM_CELLS_Y):
             # Retrieve the edge points of the cell
+            [x_point_a, y_point_a] = get_vertex_coordinates(cell_x_index, cell_y_index, "A")  # Southwest
             [x_point_b, y_point_b] = get_vertex_coordinates(cell_x_index, cell_y_index, "B")  # Northwest
             [x_point_c, y_point_c] = get_vertex_coordinates(cell_x_index, cell_y_index, "C")  # Northeast
             [x_point_d, y_point_d] = get_vertex_coordinates(cell_x_index, cell_y_index, "D")  # Southeast
-            [x_point_a, y_point_a] = get_vertex_coordinates(cell_x_index, cell_y_index, "A")  # Southwest
 
-            # Calculate the area using the determinant formula
-            gv.cell_area[cell_x_index, cell_y_index] = 0.5 * ((x_point_c - x_point_a) * (y_point_d - y_point_b) - (x_point_d - x_point_b) * (y_point_c - y_point_a))
+            # Calculate the area using the vector cross product
+            gv.cell_area[cell_x_index, cell_y_index] = 0.5 * ((x_point_c - x_point_a) * (y_point_d - y_point_b) 
+                                                            - (x_point_d - x_point_b) * (y_point_c - y_point_a))
 
             # Check if the area is negative
             if gv.cell_area[cell_x_index, cell_y_index] < 0:
@@ -465,7 +485,7 @@ def initialize():
 
     # Compute the bump height at the center of each cell
     # The bump height, cell_y0, is determined using the get_y0 function
-    gv.cell_y0 = _calculate_bump_height(gv.cell_x_coords)
+    gv.cell_y0 = _calculate_bump_height_CArc(gv.cell_x_coords) if gv.useCircularArc else _calculate_bump_height(gv.cell_x_coords)
 
     # Calculate the grid spacing in the y-direction for each x-coordinate
     # cell_dy is determined by dividing the height above the bump by the number of cells
@@ -495,7 +515,7 @@ def initialize():
 
     # Compute the bump height at the faces of each x-cell
     # Similar to cell_y0, face_y0 adjusts for the domain geometry at the cell faces
-    gv.face_y0 = _calculate_bump_height(gv.face_x_coords)
+    gv.face_y0 = _calculate_bump_height_CArc(gv.face_x_coords) if gv.useCircularArc else _calculate_bump_height(gv.face_x_coords)
 
     # Calculate the grid spacing in the y-direction (at x-coordinates of the faces)
     # The spacing varies depending on the bump height, face_y0
