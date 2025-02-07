@@ -63,6 +63,22 @@ rho_infty = np.zeros([NUM_CELLS_Y])
 c_infty = np.zeros([NUM_CELLS_Y])
 u_infty = np.zeros([NUM_CELLS_Y])
 
+p_in = np.zeros([NUM_CELLS_Y])
+T_in = np.zeros([NUM_CELLS_Y])
+c_in = np.zeros([NUM_CELLS_Y])
+u_in = np.zeros([NUM_CELLS_Y])
+M_in = np.zeros([NUM_CELLS_Y])
+rho_in = np.zeros([NUM_CELLS_Y])
+H_in = np.zeros([NUM_CELLS_Y])
+
+
+p_out = np.zeros([NUM_CELLS_Y])
+T_out = np.zeros([NUM_CELLS_Y])
+c_out = np.zeros([NUM_CELLS_Y])
+u_out = np.zeros([NUM_CELLS_Y])
+M_out = np.zeros([NUM_CELLS_Y])
+
+
 f = np.zeros([NUM_CELLS_X, NUM_CELLS_Y, 4], 'd')
 g = np.zeros([NUM_CELLS_X, NUM_CELLS_Y, 4], 'd')
 
@@ -80,7 +96,6 @@ a_d_coefficient_eta = np.zeros([NUM_CELLS_X, NUM_CELLS_Y, 4])
 nu = np.zeros([NUM_CELLS_X, NUM_CELLS_Y])
 
 
-
 # Residuals
 R = np.zeros([NUM_CELLS_X, NUM_CELLS_Y, 4], 'd')
 
@@ -91,3 +106,7 @@ iteration = 0
 time = 0
 
 output_iterations = {}
+
+pvd_entries = []
+
+useCircularArc = False
