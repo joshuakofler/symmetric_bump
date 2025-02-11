@@ -10,8 +10,10 @@ CURRENT_DIR = Path(__file__).parent
 PROJECT_DIR = CURRENT_DIR.parent
 # Go one level up and then append 'output' to the path
 OUTPUT_DIR = PROJECT_DIR / "output"
+# Result directory
+RESULT_DIR = PROJECT_DIR / "results"
 
-MAX_ITERATIONS = 5
+MAX_ITERATIONS = 5000
 
 # Computational domain dimensions
 DOMAIN_LENGTH = 1  # Base length scale
@@ -33,15 +35,17 @@ NUM_FACES_Y = int(NUM_CELLS_Y + 1)
 # Gas constant (for dry air)
 GAS_CONSTANT = 287.05   # J / kgK
 
-# Specific heat capacities (commented placeholders)
-SPECIFIC_HEAT_CV = 718      # J / kgK
-SPECIFIC_HEAT_CP = 1005     # J / kgK
-
 # Heat capacity ratio
 HEAT_CAPACITY_RATIO = 1.4
 
+# Specific heat capacities (commented placeholders)
+SPECIFIC_HEAT_CV = GAS_CONSTANT / (HEAT_CAPACITY_RATIO - 1)  # J / kgK
+SPECIFIC_HEAT_CP = SPECIFIC_HEAT_CV + GAS_CONSTANT           # J / kgK
+
 # Upstream Mach number
-UPSTREAM_MACH_NUMBER = 0.1
+UPSTREAM_MACH_NUMBER = 0.85
+# Specify artificial dissipation calculation
+IS_SUBSONIC = False
 
 # Atmospheric conditions
 ATMOSPHERIC_PRESSURE = 101300       # Pressure in Pascals
@@ -52,6 +56,7 @@ ATMOSPHERIC_TEMPERATURE = 288       # Temperature in Kelvin
 # RK_ALPHA_3 = 1/3
 # RK_ALPHA_4 = 1/2
 RK_ALPHA = [1/4, 1/3, 1/2, 1]
+# RK_ALPHA = [1/8, 0.306, 0.587, 1]
 
 CFL = 2
 

@@ -63,6 +63,7 @@ rho_infty = np.zeros([NUM_CELLS_Y])
 c_infty = np.zeros([NUM_CELLS_Y])
 u_infty = np.zeros([NUM_CELLS_Y])
 
+
 p_in = np.zeros([NUM_CELLS_Y])
 T_in = np.zeros([NUM_CELLS_Y])
 c_in = np.zeros([NUM_CELLS_Y])
@@ -77,6 +78,8 @@ T_out = np.zeros([NUM_CELLS_Y])
 c_out = np.zeros([NUM_CELLS_Y])
 u_out = np.zeros([NUM_CELLS_Y])
 M_out = np.zeros([NUM_CELLS_Y])
+rho_out = np.zeros([NUM_CELLS_Y])
+H_out = np.zeros([NUM_CELLS_Y])
 
 
 f = np.zeros([NUM_CELLS_X, NUM_CELLS_Y, 4], 'd')
@@ -84,7 +87,7 @@ g = np.zeros([NUM_CELLS_X, NUM_CELLS_Y, 4], 'd')
 
 # Flux vector
 F = np.zeros([NUM_CELLS_X, NUM_CELLS_Y, 4, 4], 'd')
-F_corrected = np.zeros([NUM_CELLS_X, NUM_CELLS_Y, 4, 4], 'd')
+F_star = np.zeros([NUM_CELLS_X, NUM_CELLS_Y, 4, 4], 'd')
 
 
 # Dissipation
@@ -93,17 +96,16 @@ artificial_dissipation = np.zeros([NUM_CELLS_X, NUM_CELLS_Y, 4, 4])
 a_d_coefficient_gamma = np.zeros([NUM_CELLS_X, NUM_CELLS_Y, 4])
 a_d_coefficient_eta = np.zeros([NUM_CELLS_X, NUM_CELLS_Y, 4])
 
-nu = np.zeros([NUM_CELLS_X, NUM_CELLS_Y])
-
+nu = np.zeros([NUM_CELLS_X, NUM_CELLS_Y], 'd')
+nu_max = np.zeros([NUM_CELLS_X, NUM_CELLS_Y, 4], 'd')
+nu_max_2 = np.zeros([NUM_CELLS_X, NUM_CELLS_Y, 4], 'd')
 
 # Residuals
 R = np.zeros([NUM_CELLS_X, NUM_CELLS_Y, 4], 'd')
 
 dt = 0
 
-
 iteration = 0
-time = 0
 
 output_iterations = {}
 
