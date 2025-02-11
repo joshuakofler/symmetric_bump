@@ -1,25 +1,29 @@
 #%%
-# import modules
+# Internal flow in a channel with a thin symmetric bump
 
-# import all global variables from globals 
-from constants import *
-import global_vars as gv
-import numpy as np
+# Import necessary modules
 
-import importlib
+# Import all global variables from globals
+from constants import *  # Import constants used throughout the code
+import global_vars as gv  # Import global variables
+import numpy as np  # Import numpy for numerical operations
+import os
 
-# own libs
-import mesh
-import cell
-import calculate_artificial_dissipation as aD
-import calculate_flux as cF
-import calculate_residual as cR
-import RK
-import plot
+import importlib  # Import importlib for module reloading
 
-import data_io as io
+# Import own libraries
+import mesh  # Mesh handling
+import cell  # Cell properties
+import calculate_artificial_dissipation as aD  # Artificial dissipation calculation
+import calculate_flux as cF  # Flux calculation
+import calculate_residual as cR  # Residual computation
+import RK  # Runge-Kutta solver
+import plot  # Plotting
+import data_io as io  # Input/output operations
+
 from matplotlib import pyplot as plt
 
+# Reload modules to ensure the latest changes are applied
 importlib.reload(gv)
 importlib.reload(mesh)
 importlib.reload(cell)
@@ -30,66 +34,150 @@ importlib.reload(RK)
 importlib.reload(plot)
 importlib.reload(io)
 
-runSimulation = True
-# Specify at which iterations the output should be saved
-gv.output_iterations = {5, 1000, 1400, 1425, 1450, 1475, 1480, 1490, 1500, 2000, 3000, 4000, 5000}
+# Simulation mode selection
+# -----------------------------------------------------------
+# mode = 0 -> Run the simulation
+# mode = 1 -> Run a previous simulation 
+# mode = 2 -> Load a previous simulation file to analyze
+# mode = 3 -> Clear output folder
+mode = 0
 
-loadSimulation = False
+# Simulation parameters
+# -----------------------------------------------------------
+# Specify the iterations at which output should be saved
+gv.output_iterations = np.arange(100, MAX_ITERATIONS + 1, 100)
+
+# Load simulation parameters
+# -----------------------------------------------------------
+# Define the iteration number to load when analyzing an old simulation
 iteration = 5000
-sim_file_path = OUTPUT_DIR / str(iteration) / f"{iteration}.vtp"
 
-OUTPUT_DIR_STORED = PROJECT_DIR / "output_M_0_1"
-sim_file_path = OUTPUT_DIR_STORED / str(iteration) / f"{iteration}.vtp"
+# Optionally override the OUTPUT parent directory (uncomment if needed)
+# OUTPUT_DIR_STORED = PROJECT_DIR / "results" / "output_M_0_85"
+# OUTPUT_DIR = OUTPUT_DIR_STORED
 
-# clear the output folder
-clear_output_folder = False
-if clear_output_folder:
-    io.clear_folder_structure()
+# Construct the file path for the stored simulation data
+# sim_dir = os.path.join(OUTPUT_DIR, str(iteration))
+# sim_file_path = os.path.join(sim_dir, f"{iteration}.vts")
 
-# first initialize the mesh
+sim_dir = os.path.join(RESULT_DIR, "bump_0_08", "M_0_2")
+sim_iteration_dir = os.path.join(sim_dir, str(iteration))
+sim_file_path = os.path.join(sim_iteration_dir, f"{iteration}.vts")
+
+# .pvd file name
+# for running a previous simulation
+pvd_filename = os.path.join(OUTPUT_DIR, "2025-02-10_16-36-40_solution_225_113.pvd")
+
+# Initialize the mesh before starting simulation
 mesh.initialize()
 
-if runSimulation:
-    # initialize the folder structure to save the iterations
+# Run the simulation if mode is set to 0
+if mode == 0:
+    # Initialize folder structure for saving iteration outputs
     io.initialize_folder_structure()
 
-    # initialize the cell paramerters over the whole domain
+    # Initialize cell parameters across the computational domain
     cell.initialize()
 
-    # initialize the residuals 
+    # Compute initial residuals
     cR.update_residual(gv.state_vector)
-
-    # start simulation
-
+    
+    # Start the main simulation loop
     for iter in range(MAX_ITERATIONS):        
-        gv.iteration += 1 
+        gv.iteration += 1  # Increment iteration counter
         
+        # Run a single iteration of the solver
         RK.run_iteration()
-
+        
+        # Save output at specified iterations
         if gv.iteration in gv.output_iterations:
             io.save_iteration(gv.iteration)
-
-    # plot the results
+    
+    # Save output in ParaView format
+    io.save_pvd()
+    
+    # Plot convergence history
     fig1, ax1 = plt.subplots(figsize=(8,6))
     plot.plot_convergence_history(fig1)
-
-    # plot the Mach number
+    
+    # Plot Mach number distribution
     fig2, ax2 = plt.subplots(figsize=(24,8))
     plot.plot_cell_data(fig2, gv.M, "Mach number", "M")
 
-if loadSimulation:
-    gv.iteration = iteration
+if mode == 1:
+    gv.iteration = iteration  # Set iteration number
 
-    [gv.state_vector, gv.m_in, gv.m_out] = io.read_iteration(sim_file_path)
+    gv.output_iterations = np.arange(gv.iteration + 100, MAX_ITERATIONS + 1, 100)
 
+    io.initialize_folder_structure()
+
+    # Load pvd file
+    io.read_existing_pvd(pvd_filename)
+
+    # Load state vector and mass flow data from the stored file
+    io.read_iteration(sim_file_path)
+
+    gv.state_vector[:, :, 0] = gv.rho[:,:]
+    gv.state_vector[:, :, 1] = gv.rho[:,:] * gv.u[:,:,0]
+    gv.state_vector[:, :, 2] = gv.rho[:,:] * gv.u[:,:,1]
+    gv.state_vector[:, :, 3] = gv.rho[:,:] * gv.E[:,:]
+
+    # Define stagnation properties
+    cell.calculate_inlet_properties()
+    # Initialize cell parameters across the computational domain
     cell.update_cell_properties(gv.state_vector)
 
-    fig0, ax0 = plt.subplots(figsize=(8,6))
-    plot.plot_convergence_history(fig0)
+    # Compute initial residuals
+    cR.update_residual(gv.state_vector)
 
+    # Start the main simulation loop
+    for iter in range(iteration, MAX_ITERATIONS):        
+        gv.iteration += 1  # Increment iteration counter
+        
+        # Run a single iteration of the solver
+        RK.run_iteration()
+        
+        # Save output at specified iterations
+        if gv.iteration in gv.output_iterations:
+            io.save_iteration(gv.iteration)
+
+    # Save output in ParaView format
+    io.save_pvd()
+    
+    # Plot convergence history
+    fig1, ax1 = plt.subplots(figsize=(8,6))
+    plot.plot_convergence_history(fig1)
+    
+    # Plot Mach number distribution
+    fig2, ax2 = plt.subplots(figsize=(12,4))
+    plot.plot_cell_data(fig2, gv.M, "Mach number", "M")
+
+
+# Load and analyze a previous simulation if mode is set to 1
+if mode == 2:
+    gv.iteration = iteration  # Set iteration number
+    
+    # Load state vector and mass flow data from the stored file
+    io.read_iteration(sim_file_path)
+
+    gv.state_vector[:, :, 0] = gv.rho[:,:]
+    gv.state_vector[:, :, 1] = gv.rho[:,:] * gv.u[:,:,0]
+    gv.state_vector[:, :, 2] = gv.rho[:,:] * gv.u[:,:,1]
+    gv.state_vector[:, :, 3] = gv.rho[:,:] * gv.E[:,:]
+
+    # Define stagnation properties
+    cell.calculate_inlet_properties()
+    # Initialize cell parameters across the computational domain
+    cell.update_cell_properties(gv.state_vector)
+    
+    # # Plot convergence history of the loaded simulation
+    # fig0, ax0 = plt.subplots(figsize=(8,6))
+    # plot.plot_convergence_history(fig0, sim_dir)
+    
+    # Plot Mach number distribution
     fig1, ax1 = plt.subplots(figsize=(24,8))
-    plot.plot_cell_data(fig1, gv.M, "Mach number", "M")
-
-    fig2, ax2 = plt.subplots(figsize=(24,8))
-    plot.plot_cell_data(fig2, gv.u[:,:,1], "Tangential Velocity", "Uy")
-# %%
+    plot.plot_cell_data(fig1, gv.M, "Mach number", "M", sim_dir)
+    
+# Option to clear the output folder before running a new simulation
+if mode == 3:
+    io.clear_folder_structure()
