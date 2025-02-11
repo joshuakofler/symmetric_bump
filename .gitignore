@@ -1,0 +1,13 @@
+src/__pycache__/calculate_artificial_dissipation.cpython-312.pyc
+src/__pycache__/calculate_flux.cpython-312.pyc
+src/__pycache__/calculate_residual.cpython-312.pyc
+src/__pycache__/cell.cpython-312.pyc
+src/__pycache__/constants.cpython-312.pyc
+src/__pycache__/data_io.cpython-312.pyc
+src/__pycache__/global_vars.cpython-312.pyc
+src/__pycache__/mesh.cpython-312.pyc
+src/__pycache__/plot.cpython-312.pyc
+src/__pycache__/RK.cpython-312.pyc
+
+output/*
+src/test_plot.py
