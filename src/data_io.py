@@ -8,6 +8,7 @@ import global_vars as gv
 from datetime import datetime
 
 import os
+import re
 import vtk
 
 def clear_folder_structure():
@@ -40,7 +41,7 @@ def initialize_folder_structure():
     
     # Create folders for each iteration
     for iteration in gv.output_iterations:
-        folder_name = os.path.join(OUTPUT_DIR, f"{iteration}")
+        folder_name = os.path.join(OUTPUT_DIR, f"{int(iteration)}")
         os.makedirs(folder_name, exist_ok=True)  # Creates the folder if it doesn't exist
         print(f"Created folder: {folder_name}")
 
@@ -48,44 +49,124 @@ def initialize_folder_structure():
     return None
 
 def save_iteration(iteration):
-    # Flatten the coordinates into a list of (x, y, z=0) tuples
-    points = []
-    for i, x in enumerate(gv.cell_x_coords):  # Iterate over x-coordinates
-        for j, y in enumerate(gv.cell_y_coords[i]):  # Use y-coordinates corresponding to the current x
-            points.append((x, y, 0))  # Add z=0 for 2D points
-    points = np.array(points)
-
-    # Create a VTK PolyData object
-    poly_data = vtk.vtkPolyData()
-
-    # Create a vtkPoints object to hold the points
+    # Create VTK Points for the grid with face coordinates
     vtk_points = vtk.vtkPoints()
-    for point in points:
-        vtk_points.InsertNextPoint(point)
+    for j in range(NUM_FACES_Y):
+        for i in range(NUM_FACES_X):
+            # Extract face coordinates from gv (vertex coordinates)
+            x = gv.face_x_coords[i]
+            y = gv.face_y_coords[i, j]
+            vtk_points.InsertNextPoint(x, y, 0)  # Assuming 2D grid, z=0
 
-    # Set points in the PolyData object
-    poly_data.SetPoints(vtk_points)
+    # Create the structured grid (vtkStructuredGrid)
+    structured_grid = vtk.vtkStructuredGrid()
+    structured_grid.SetDimensions(NUM_FACES_X, NUM_FACES_Y, 1)  # Set the grid dimensions
 
-    # Shape (nx, ny, 4)
-    state_vectors = gv.state_vector
+    # Set the points for the grid
+    structured_grid.SetPoints(vtk_points)
 
-    # Create a VTK FloatArray to store the 4-component state vector
-    vtk_state_vectors = vtk.vtkFloatArray()
-    vtk_state_vectors.SetName("StateVector")  # Name for the state vector field
-    vtk_state_vectors.SetNumberOfComponents(4)  # 4 components per point
+    # Create density field (rho)
+    vtk_rho = vtk.vtkFloatArray()
+    vtk_rho.SetName("Density")
+    vtk_rho.SetNumberOfComponents(1)
 
-    # Flatten the 3D array (nx, ny, 4) to iterate over all grid points
-    for i,j in np.ndindex(NUM_CELLS_X, NUM_CELLS_Y):
-        # Extract the 4-component vector at (i, j)
-        vector = state_vectors[i, j, :]
-        vtk_state_vectors.InsertNextTuple(vector.tolist())  # Convert to list
+    for j in range(NUM_CELLS_Y):
+        for i in range(NUM_CELLS_X):
+            vtk_rho.InsertNextValue(gv.rho[i, j])
 
-    # Attach the state vectors to the PolyData
-    poly_data.GetPointData().AddArray(vtk_state_vectors)
+    structured_grid.GetCellData().SetScalars(vtk_rho)
+
+    # Create velocity vector field (U) with 2 components (u, v)
+    vtk_velocity = vtk.vtkFloatArray()
+    vtk_velocity.SetName("Velocity")
+    vtk_velocity.SetNumberOfComponents(2)  # 2 components for the vector (u, v)
+
+    for j in range(NUM_CELLS_Y):
+        for i in range(NUM_CELLS_X):
+            vtk_velocity.InsertNextTuple2(gv.u[i, j, 0], gv.u[i, j, 1])  # Assuming gv.u contains 2 components for velocity in x and y
+
+    structured_grid.GetCellData().AddArray(vtk_velocity)
+
+    # Create total energy field (E)
+    vtk_energy = vtk.vtkFloatArray()
+    vtk_energy.SetName("Total Energy")
+    vtk_energy.SetNumberOfComponents(1)
+
+    for j in range(NUM_CELLS_Y):
+        for i in range(NUM_CELLS_X):
+            vtk_energy.InsertNextValue(gv.E[i, j])
+
+    structured_grid.GetCellData().AddArray(vtk_energy)
+
+    # Create internal energy field (e)
+    vtk_internal_energy = vtk.vtkFloatArray()
+    vtk_internal_energy.SetName("Internal Energy")
+    vtk_internal_energy.SetNumberOfComponents(1)
+
+    for j in range(NUM_CELLS_Y):
+        for i in range(NUM_CELLS_X):
+            vtk_internal_energy.InsertNextValue(gv.e[i, j])
+
+    structured_grid.GetCellData().AddArray(vtk_internal_energy)
+
+    # Create temperature field (T)
+    vtk_temperature = vtk.vtkFloatArray()
+    vtk_temperature.SetName("Temperature")
+    vtk_temperature.SetNumberOfComponents(1)
+
+    for j in range(NUM_CELLS_Y):
+        for i in range(NUM_CELLS_X):
+            vtk_temperature.InsertNextValue(gv.T[i, j])
+
+    structured_grid.GetCellData().AddArray(vtk_temperature)
+
+    # Create speed of sound field (c)
+    vtk_speed_of_sound = vtk.vtkFloatArray()
+    vtk_speed_of_sound.SetName("Speed of Sound")
+    vtk_speed_of_sound.SetNumberOfComponents(1)
+
+    for j in range(NUM_CELLS_Y):
+        for i in range(NUM_CELLS_X):
+            vtk_speed_of_sound.InsertNextValue(gv.c[i, j])
+
+    structured_grid.GetCellData().AddArray(vtk_speed_of_sound)
+
+    # Create pressure field (p)
+    vtk_pressure = vtk.vtkFloatArray()
+    vtk_pressure.SetName("Pressure")
+    vtk_pressure.SetNumberOfComponents(1)
+
+    for j in range(NUM_CELLS_Y):
+        for i in range(NUM_CELLS_X):
+            vtk_pressure.InsertNextValue(gv.p[i, j])
+
+    structured_grid.GetCellData().AddArray(vtk_pressure)
+
+    # Create total enthalpy field (H)
+    vtk_enthalpy = vtk.vtkFloatArray()
+    vtk_enthalpy.SetName("Total Enthalpy")
+    vtk_enthalpy.SetNumberOfComponents(1)
+
+    for j in range(NUM_CELLS_Y):
+        for i in range(NUM_CELLS_X):
+            vtk_enthalpy.InsertNextValue(gv.H[i, j])
+
+    structured_grid.GetCellData().AddArray(vtk_enthalpy)
+
+    # Create Mach number field (M)
+    vtk_mach = vtk.vtkFloatArray()
+    vtk_mach.SetName("Mach Number")
+    vtk_mach.SetNumberOfComponents(1)
+
+    for j in range(NUM_CELLS_Y):
+        for i in range(NUM_CELLS_X):
+            vtk_mach.InsertNextValue(gv.M[i, j])
+
+    structured_grid.GetCellData().AddArray(vtk_mach)
     
     # Add m_in to the PolyData
     vtk_m_in = vtk.vtkFloatArray()
-    vtk_m_in.SetName("m_in")  # Name for the m_in field
+    vtk_m_in.SetName("Inlet Massflow")  # Name for the m_in field
     vtk_m_in.SetNumberOfComponents(1)  # 1 component per point
 
     # Ensure that gv.m_in is a list or numpy array with the same length as the number of points
@@ -93,11 +174,11 @@ def save_iteration(iteration):
         if(index <= gv.iteration):
             vtk_m_in.InsertNextValue(value)  # Insert each value of m_in into the vtk array
 
-    poly_data.GetFieldData().AddArray(vtk_m_in)
+    structured_grid.GetFieldData().AddArray(vtk_m_in)
 
     # Add m_out to the PolyData
     vtk_m_out = vtk.vtkFloatArray()
-    vtk_m_out.SetName("m_out")  # Name for the m_out field
+    vtk_m_out.SetName("Outlet Massflow")  # Name for the m_out field
     vtk_m_out.SetNumberOfComponents(1)  # 1 component per point
 
     # Ensure that gv.m_out is a list or numpy array with the same length as the number of points
@@ -105,16 +186,19 @@ def save_iteration(iteration):
         if(index <= gv.iteration):
             vtk_m_out.InsertNextValue(value)  # Insert each value of m_out into the vtk array
 
-    poly_data.GetFieldData().AddArray(vtk_m_out)
+    structured_grid.GetFieldData().AddArray(vtk_m_out)
 
     # Create the output directory if it doesn't exist
-    iteration_dir = os.path.join(OUTPUT_DIR, str(iteration))
-    # Create a writer to save the data to a file
-    file_path = os.path.join(iteration_dir, f"{iteration}.vtp")
-    writer = vtk.vtkXMLPolyDataWriter()
-    writer.SetInputData(poly_data)  # Ensure the PolyData is provided to the writer
+    file_path = os.path.join(OUTPUT_DIR, f"{iteration}\{iteration}.vts")
+
+    # Save the structured grid to file using vtkXMLStructuredGridWriter
+    writer = vtk.vtkXMLStructuredGridWriter()
     writer.SetFileName(file_path)
+    writer.SetInputData(structured_grid)
     writer.Write()
+
+    # Add entry for PVD file (used for time series visualization)
+    gv.pvd_entries.append(f'    <DataSet timestep="{iteration}" file="{iteration}/{iteration}.vts"/>')
     
     # Get the size of the file
     file_size = os.path.getsize(file_path)
@@ -126,49 +210,126 @@ def save_iteration(iteration):
 
     return None
 
+def read_existing_pvd(pvd_filename):
+    if not os.path.exists(pvd_filename):
+        return []
+
+    with open(pvd_filename, "r") as f:
+        content = f.read()
+
+    # Extrahiere vorhandene <DataSet>-Einträge
+    existing_entries = re.findall(r"<DataSet[\s\S]*?/>\s*", content)
+
+    # Falls keine Einträge existieren, gib eine leere Liste zurück
+    if not existing_entries:
+        return []
+
+    # Erster Eintrag bleibt ohne Tab, alle anderen bekommen eine Einrückung
+    gv.pvd_entries.extend([existing_entries[0].strip()] + [f"\t{entry.strip()}" for entry in existing_entries[1:]])
+
+    return None
+
+def save_pvd():
+    """Creates a .pvd file referencing all saved .vtp files."""
+    pvd_content = """<?xml version="1.0"?>
+    <VTKFile type="Collection" version="0.1" byte_order="LittleEndian">
+        <Collection>
+            {}    
+        </Collection>
+    </VTKFile>
+    """.format("\n".join(gv.pvd_entries))  # Ensure entries are correctly indented
+
+
+    # Get the current time
+    current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+
+    pvd_filename = os.path.join(OUTPUT_DIR, f"{current_time}_solution_{NUM_CELLS_X}_{NUM_CELLS_Y}.pvd")
+    with open(pvd_filename, "w") as f:
+        f.write(pvd_content)
+
+    print(f"Saved PVD file: {pvd_filename}")
+
+    return None
+
 def read_iteration(file_path):
-    # Create a reader for the VTK file
-    reader = vtk.vtkXMLPolyDataReader()
+    # Initialize the VTK reader for .vts files
+    reader = vtk.vtkXMLStructuredGridReader()
     reader.SetFileName(file_path)
-    reader.Update()
+    reader.Update()  # Read the file
 
-    # Get the PolyData object from the reader
-    poly_data = reader.GetOutput()
+    # Get the structured grid data
+    structured_grid = reader.GetOutput()
 
-    # Check if the PolyData has points
-    vtk_points = poly_data.GetPoints()
-    if vtk_points is None:
-        print(f"Error: No points found in the VTK file {file_path}.")
-        return None, None, None, None  # Return None to indicate an error
+    # Extract grid dimensions
+    dimensions = structured_grid.GetDimensions()
+    NUM_FACES_X, NUM_FACES_Y = dimensions[0], dimensions[1]
 
-    # Retrieve state vector (assuming it's stored with 4 components)
-    vtk_state_vectors = poly_data.GetPointData().GetArray("StateVector")
-    if vtk_state_vectors is None:
-        print(f"Error: StateVector array not found in the VTK file {file_path}.")
-        state_vectors = None
-    else:
-        state_vectors = np.array([vtk_state_vectors.GetTuple(i) for i in range(vtk_state_vectors.GetNumberOfTuples())])
+    # Extract point coordinates (grid face positions)
+    points = structured_grid.GetPoints()
+    gv.face_x_coords = np.zeros(NUM_FACES_X)
+    gv.face_y_coords = np.zeros((NUM_FACES_X, NUM_FACES_Y))
 
-    state_vector_grid = state_vectors.reshape((NUM_CELLS_X, NUM_CELLS_Y, 4))
+    for j in range(NUM_FACES_Y):
+        for i in range(NUM_FACES_X):
+            x, y, _ = points.GetPoint(i + j * NUM_FACES_X)  # Extract x, y (ignoring z)
+            gv.face_x_coords[i] = x
+            gv.face_y_coords[i, j] = y
+
+    # Extract cell-based scalar fields
+    cell_data = structured_grid.GetCellData()
+
+    def extract_field(field_name):
+        """Helper function to extract a field from cell data."""
+        vtk_array = cell_data.GetArray(field_name)
+        if not vtk_array:
+            return None  # Field might not be present
+        data = np.zeros((NUM_FACES_X - 1, NUM_FACES_Y - 1))  # Adjust for cell-centered data
+        for j in range(NUM_FACES_Y - 1):
+            for i in range(NUM_FACES_X - 1):
+                data[i, j] = vtk_array.GetValue(i + j * (NUM_FACES_X - 1))
+        return data
+
+    # Load each field into gv
+    gv.rho = extract_field("Density")
     
-    # Retrieve m_in field
-    vtk_m_in = poly_data.GetFieldData().GetArray("m_in")
-    if vtk_m_in is None:
-        print(f"Warning: m_in array not found in the VTK file {file_path}.")
-        m_in = None  # Handle case if m_in is not present in the file
-    else:
-        m_in = np.array([vtk_m_in.GetValue(i) for i in range(vtk_m_in.GetNumberOfValues())])
+    # Extract velocity as a 2-component vector field
+    gv.u = np.zeros((NUM_FACES_X - 1, NUM_FACES_Y - 1, 2))
+    velocity_array = cell_data.GetArray("Velocity")
+    if velocity_array:
+        for j in range(NUM_FACES_Y - 1):
+            for i in range(NUM_FACES_X - 1):
+                gv.u[i, j, 0], gv.u[i, j, 1] = velocity_array.GetTuple2(i + j * (NUM_FACES_X - 1))
 
-    # Retrieve m_out field
-    vtk_m_out = poly_data.GetFieldData().GetArray("m_out")
-    if vtk_m_out is None:
-        print(f"Warning: m_out array not found in the VTK file {file_path}.")
-        m_out = None  # Handle case if m_out is not present in the file
-    else:
-        m_out = np.array([vtk_m_out.GetValue(i) for i in range(vtk_m_out.GetNumberOfValues())])
+    gv.E = extract_field("Total Energy")
+    gv.e = extract_field("Internal Energy")
+    gv.T = extract_field("Temperature")
+    gv.c = extract_field("Speed of Sound")
+    gv.p = extract_field("Pressure")
+    gv.H = extract_field("Total Enthalpy")
+    gv.M = extract_field("Mach Number")
 
-    # Optionally, you can return the retrieved data for further processing
-    return state_vector_grid, m_in, m_out
+    # Extract global field data (e.g., mass flow rates)
+    field_data = structured_grid.GetFieldData()
+
+    def extract_field_data(field_name):
+        """Helper function to extract global field data."""
+        vtk_array = field_data.GetArray(field_name)
+        if not vtk_array:
+            return None
+        return np.array([vtk_array.GetValue(i) for i in range(vtk_array.GetNumberOfTuples())])
+
+    gv.m_in[:-(MAX_ITERATIONS-gv.iteration)] = extract_field_data("Inlet Massflow")
+    gv.m_out[:-(MAX_ITERATIONS-gv.iteration)] = extract_field_data("Outlet Massflow")
+
+    # Fill the state vector
+    gv.state_vector[:, :, 0] = gv.rho[:,:]
+    gv.state_vector[:, :, 1] = gv.rho[:,:] * gv.u[:,:,0]
+    gv.state_vector[:, :, 2] = gv.rho[:,:] * gv.u[:,:,1]
+    gv.state_vector[:, :, 3] = gv.rho[:,:] * gv.E[:,:]
+
+    print(f"Successfully loaded {file_path} into global variables.")
+
+    return None
 
 def simplify_file_path(file_path, base_path):
     """Simplify the file path by stripping the base path."""
