@@ -13,7 +13,7 @@ import os
 import cell
 import mesh
 
-def plot_convergence_history(fig):
+def plot_convergence_history(fig, parent_directory = OUTPUT_DIR):
     ax = fig.gca()
 
     iterations = np.linspace(0, gv.iteration + 1, gv.iteration+1)
@@ -39,14 +39,14 @@ def plot_convergence_history(fig):
     ax.legend(loc="lower right", fontsize=10)
 
     # Save the plot to a file
-    iteration_dir = os.path.join(OUTPUT_DIR, str(gv.iteration))
+    iteration_dir = os.path.join(parent_directory, str(gv.iteration))
     file_path = os.path.join(iteration_dir, f"{gv.iteration}_convergence_history.pdf")
     fig.savefig(file_path, bbox_inches="tight")
     print(f"Plot saved at: {file_path}")
 
     return None
 
-def plot_cell_data(fig, fluid_property, property_name, acronym = "DEFAULT"):
+def plot_cell_data(fig, fluid_property, property_name, acronym = "DEFAULT", parent_directory = OUTPUT_DIR):
     ax = fig.gca()
     #----------------------------------------------------------------------------------
     # Convert fluid property data to a numpy array
@@ -64,13 +64,17 @@ def plot_cell_data(fig, fluid_property, property_name, acronym = "DEFAULT"):
     save_plot = True
     if save_plot:
         # Create the output directory if it doesn't exist
-        iteration_dir = os.path.join(OUTPUT_DIR, str(gv.iteration))
+        iteration_dir = os.path.join(parent_directory, str(gv.iteration))
         if not os.path.exists(iteration_dir):
             os.makedirs(iteration_dir)
             print(f"Created directory: {iteration_dir}")
         
+        # Format with two decimal places, replace '.' with '_'
+        formatted_mach_number = f"M_{gv.M[0,:].mean():.2f}".replace(".", "_")
+
         # Create a writer to save the data to a file
-        file_path = os.path.join(iteration_dir, f"{gv.iteration}_C_{acronym}_{NUM_CELLS_X}_{NUM_CELLS_Y}.pdf")
+        file_path = os.path.join(iteration_dir, f"{gv.iteration}_F_{formatted_mach_number}_{acronym}_{NUM_CELLS_X}_{NUM_CELLS_Y}.pdf")
+    
     #----------------------------------------------------------------------------------
 
     if show_vertical_grid:
@@ -98,7 +102,7 @@ def plot_cell_data(fig, fluid_property, property_name, acronym = "DEFAULT"):
 
     # Normalize colormap
     norm = Normalize(vmin=data.min(), vmax=data.max())
-    cmap = plt.cm.viridis
+    cmap = plt.cm.jet
 
     for i, j in np.ndindex(NUM_CELLS_X, NUM_CELLS_Y):
         # Get cell vertices
@@ -127,10 +131,22 @@ def plot_cell_data(fig, fluid_property, property_name, acronym = "DEFAULT"):
     ax.tick_params(axis='both', which='major', labelsize=16)
 
     # Set plot title and labels
-    ax.set_title(f"Distribution of {property_name} computed on a ({NUM_CELLS_X}x{NUM_CELLS_Y}) mesh (cell center values)", fontsize=20, pad=32)
-    ax.text(0.5, 1.02, f"Iteration: {gv.iteration}, Max: {data.max():.3g}, Min: {data.min():.3g}", transform=ax.transAxes, fontsize=18, ha='center')
+    # ax.set_title(f"Distribution of {property_name} computed on a ({NUM_CELLS_X}x{NUM_CELLS_Y}) mesh (cell center values)", fontsize=20, pad=32)
+    # ax.text(0.5, 1.02, f"Iteration: {gv.iteration}, Max: {data.max():.3g}, Min: {data.min():.3g}", transform=ax.transAxes, fontsize=18, ha='center')
     ax.set_xlabel(r"$x$", fontsize=18)
     ax.set_ylabel(r"$y$", fontsize=18)
+
+    ax.text(
+        0.03,
+        0.9,
+        (r"$M_{\infty} = $" + f"{gv.M[0,:].mean():.2f}"),
+        fontsize = 22,
+        color="black",
+        bbox=dict(facecolor="white", alpha=0.4, edgecolor="gray", boxstyle="round,pad=0.35"),
+        horizontalalignment = 'left',
+        verticalalignment = 'center',
+        transform = ax.transAxes
+    )
 
     if save_plot:
         # Save the plot to a file
@@ -138,7 +154,7 @@ def plot_cell_data(fig, fluid_property, property_name, acronym = "DEFAULT"):
         print(f"Plot saved at: {file_path}")
     return None
 
-def plot_face_data(fig, fluid_property, property_name, acronym = "DEFAULT"):
+def plot_face_data(fig, fluid_property, property_name, acronym = "DEFAULT", parent_directory = OUTPUT_DIR):
     ax = fig.gca()
     #----------------------------------------------------------------------------------
     show_vertical_grid = False
@@ -151,13 +167,16 @@ def plot_face_data(fig, fluid_property, property_name, acronym = "DEFAULT"):
     save_plot = True
     if save_plot:
         # Create the output directory if it doesn't exist
-        iteration_dir = os.path.join(OUTPUT_DIR, str(gv.iteration))
+        iteration_dir = os.path.join(parent_directory, str(gv.iteration))
         if not os.path.exists(iteration_dir):
             os.makedirs(iteration_dir)
             print(f"Created directory: {iteration_dir}")
         
+        # Format with two decimal places, replace '.' with '_'
+        formatted_mach_number = f"M_{UPSTREAM_MACH_NUMBER:.2f}".replace(".", "_")
+
         # Create a writer to save the data to a file
-        file_path = os.path.join(iteration_dir, f"{gv.iteration}_F_{acronym}_{NUM_CELLS_X}_{NUM_CELLS_Y}.pdf")
+        file_path = os.path.join(iteration_dir, f"{gv.iteration}_F_{formatted_mach_number}_{acronym}_{NUM_CELLS_X}_{NUM_CELLS_Y}.pdf")
     #----------------------------------------------------------------------------------
 
     if show_vertical_grid:
@@ -221,6 +240,18 @@ def plot_face_data(fig, fluid_property, property_name, acronym = "DEFAULT"):
     ax.text(0.5, 1.02, f"Iteration: {gv.iteration}, Max: {data.max():.3g}, Min: {data.min():.3g}", transform=ax.transAxes, fontsize=18, ha='center')
     ax.set_xlabel(r"$x$", fontsize=18)
     ax.set_ylabel(r"$y$", fontsize=18)
+
+    ax.text(
+        0.03,
+        0.9,
+        (r"$M = $" + f"{gv.M[0,:].mean():.2f}"),
+        fontsize = 22,
+        color="black",
+        bbox=dict(facecolor="white", alpha=0.4, edgecolor="gray", boxstyle="round,pad=0.35"),
+        horizontalalignment = 'left',
+        verticalalignment = 'center',
+        transform = ax.transAxes
+    )
 
     if save_plot:
         # Save the plot to a file
