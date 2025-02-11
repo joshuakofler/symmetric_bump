@@ -1,6 +1,8 @@
-#%%
-# This module uses a RK-scheme to calculate the next timestep
+# This module implements a Runge-Kutta (RK) scheme to perform a single iteration of the simulation.
+# It updates the state vector through a series of intermediate steps, recalculates residuals, 
+# and updates cell properties, ensuring that the system progresses according to the RK method.
 
+# Import modules
 from constants import *
 import global_vars as gv
 
@@ -11,87 +13,97 @@ import data_io as io
 
 # RK-solution buffer
 Y = np.zeros([NUM_CELLS_X, NUM_CELLS_Y, 4], 'd')
-# Residual 
+# Residual monitoring
 R_start = np.zeros([4], 'd')
 R_final = np.zeros([4], 'd')
 
 def run_iteration():
+    """
+    Executes a single iteration of the simulation using the four-stage Runge-Kutta (RK4) method
+    to update the conserved variables. This iteration involves computing intermediate states, 
+    updating cell properties, recalculating residuals, and monitoring convergence throughout.
+
+    Key Steps:
+    1. **Initial Residuals:**   Compute and store the maximum residuals for each conserved variable 
+                                before the iteration begins (`R_start`).
+    2. **RK4 Integration:**
+        - **Time Step Calculation:**            Compute the timestep based on the maximum velocity in the domain.
+        - **Substeps:**                         Calculate the intermediate states (Y) for each RK step.
+        - **Update Residuals and Properties:**  After each RK substep, update the physical properties of the cells 
+                                                and recalculate the residuals based on the updated state.
+    3. **Final Update:**            After completing all RK steps, overwrite the conserved variable vector 
+                                    with the final computed values.
+    4. **Mass Flow Update:**        Update the mass flow across cell boundaries (inlet and outlet) 
+                                    after the iteration.
+    5. **Convergence Monitoring:**  Store the final residuals (`R_final`) and output them every 10 iterations 
+                                    for convergence analysis.
+
+    """
     global Y, R_start, R_final
-    # this mehtod uses a rk 4 to calculate the new state_vector
-    # between each step the cell properties have to be updated
-    # as well as the residuals have to be updated
-    # after that one can calculate the maxium velocity and with
-    # this one can define the timestep used in the rk
 
-    # calculate timestep
-    calculate_timestep()
+    # Store the initial maximum residuals for each conserved variable before the iteration begins
+    R_start = [gv.R[:, :, k].max() for k in range(4)]
 
-    # in the first step it isnt needed to update the cell_properties as well as the 
-    # resiuduals bc. it was updated in the last step of the previous iteration
-    # so that it wouldnt change anything bc the state vector is the same as before
+    # Perform the four-step Runge-Kutta time integration
+    for step in range(4):
+        # Calculate the timestep based on the maximum velocity in the domain
+        _calculate_timestep()
 
-    # at step = 0 Y2 is calculate
-    # at setp = 1 Y3 is calculated
-    # at step = 2 Y4 is calculated
+        # Vectorized computation of the intermediate solution Y using the RK method
+        Y[:, :, :] = (gv.state_vector[:, :, :] 
+                      - (gv.dt / gv.cell_area[:, :, np.newaxis] * RK_ALPHA[step] * gv.R[:, :, :]))
 
-    R_start[0] = gv.R[:,:,0].max()
-    R_start[1] = gv.R[:,:,1].max()
-    R_start[2] = gv.R[:,:,2].max()
-    R_start[3] = gv.R[:,:,3].max()
+        # # Compute the intermediate solution Y using the RK method for each cell and conserved variable
+        # for i, j in np.ndindex(NUM_CELLS_X, NUM_CELLS_Y):
+        #     for k in range(4):  # Loop over the four conserved variables
+        #         Y[i, j, k] = gv.state_vector[i, j, k] - (
+        #             gv.dt / gv.cell_area[i, j] * RK_ALPHA[step] * gv.R[i, j, k]
+        #         )
 
-    for step in range(3):
-        # calculate the zwischenstep value using a RK method
-        
-        for i,j in np.ndindex(NUM_CELLS_X, NUM_CELLS_Y):
-            Y[i,j,0] = gv.state_vector[i,j,0] - gv.dt / gv.cell_area[i,j] * RK_ALPHA[step] * gv.R[i,j,0]
-            Y[i,j,1] = gv.state_vector[i,j,1] - gv.dt / gv.cell_area[i,j] * RK_ALPHA[step] * gv.R[i,j,1]
-            Y[i,j,2] = gv.state_vector[i,j,2] - gv.dt / gv.cell_area[i,j] * RK_ALPHA[step] * gv.R[i,j,2]
-            Y[i,j,3] = gv.state_vector[i,j,3] - gv.dt / gv.cell_area[i,j] * RK_ALPHA[step] * gv.R[i,j,3]
-
+        # Update the physical properties of each cell based on the new intermediate state vector Y
         cell.update_cell_properties(Y)
 
+        # Recalculate residuals based on the updated intermediate conserved variables (Y)
         cR.update_residual(Y)
 
-        calculate_timestep()
+    # After completing all RK steps, overwrite the state vector with the final computed values
+    gv.state_vector[:, :, :] = Y[:, :, :]
 
-    for i,j in np.ndindex(NUM_CELLS_X, NUM_CELLS_Y):
-        gv.state_vector[i,j,0] = gv.state_vector[i,j,0] - gv.dt / gv.cell_area[i,j] * RK_ALPHA[3] * gv.R[i,j,0]
-        gv.state_vector[i,j,1] = gv.state_vector[i,j,1] - gv.dt / gv.cell_area[i,j] * RK_ALPHA[3] * gv.R[i,j,1]
-        gv.state_vector[i,j,2] = gv.state_vector[i,j,2] - gv.dt / gv.cell_area[i,j] * RK_ALPHA[3] * gv.R[i,j,2]
-        gv.state_vector[i,j,3] = gv.state_vector[i,j,3] - gv.dt / gv.cell_area[i,j] * RK_ALPHA[3] * gv.R[i,j,3]
-        
-    cell.update_cell_properties(gv.state_vector)
-
+    # Update the mass flow across cell boundaries after completing the iteration
     cell.update_in_out_massflow()
 
-    cR.update_residual(gv.state_vector)
+    # Store the final maximum residuals to monitor convergence
+    R_final = [gv.R[:, :, k].max() for k in range(4)]
 
-    R_final[0] = gv.R[:,:,0].max()
-    R_final[1] = gv.R[:,:,1].max()
-    R_final[2] = gv.R[:,:,2].max()
-    R_final[3] = gv.R[:,:,3].max()
-
+    # Print residual information every 10 iterations for convergence monitoring
     if gv.iteration % 10 == 0:
         io.print_iteration_residual(gv.iteration, R_start, R_final)
 
     return None
 
-def calculate_timestep():
-    
-    umax = np.max(np.maximum(np.abs(gv.u[:, :, 0].max() + gv.c[:,:]), np.abs(gv.u[:, :, 0].max() - gv.c[:,:])))
-    
-    vmax = np.max(np.maximum(np.abs(gv.u[:, :, 1].max() + gv.c[:,:]), np.abs(gv.u[:, :, 1].max() - gv.c[:,:])))
-        
-    # # Compute u_mag
-    # u_mag = np.sqrt(gv.u[:, :, 0]**2 + gv.u[:, :, 1]**2)
+def _calculate_timestep():
+    """
+    Calculates the time step (`dt`) for the simulation based on the maximum velocity 
+    in the system and the Courant-Friedrichs-Lewy (CFL) condition. The time step is used 
+    to ensure the stability of the numerical method.
 
-    # # Calculate umax considering both (u + c) and (u - c)
-    # umax = np.max(np.maximum(np.abs(u_mag + gv.c[:, :]), np.abs(u_mag - gv.c[:, :])))
+    In this function:
+    1. The maximum value of the velocity `umax` (the maximum velocity from the sum and 
+        difference of `u` and `c`) is calculated.
+    2. The maximum value of the vertical velocity `vmax` (the maximum velocity from 
+        the sum and difference of `u` and `c` in the vertical direction) is calculated.
+    3. The time step `dt` is calculated based on the CFL condition and the maximum velocities 
+        in the x and y directions.
+
+    Returns:
+    None (The function updates the global variables `gv.dt` and `gv.time`).
+    """
     
-    # Update time step
+    # Calculate the maximum velocity (umax) and maximum vertical velocity (vmax)
+    umax = np.max([np.max(np.abs(gv.u[:, :, 0] + gv.c[:, :])), np.max(np.abs(gv.u[:, :, 0] - gv.c[:, :]))])
+    vmax = np.max([np.max(np.abs(gv.u[:, :, 1] + gv.c[:, :])), np.max(np.abs(gv.u[:, :, 1] - gv.c[:, :]))])
+
+    # Calculate the time step (dt) based on the CFL condition
     gv.dt = CFL / (umax / gv.cell_dx + vmax / gv.cell_dy.min())
-
-    # Update time
-    gv.time += gv.dt
 
     return None
