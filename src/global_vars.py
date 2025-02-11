@@ -98,7 +98,6 @@ a_d_coefficient_eta = np.zeros([NUM_CELLS_X, NUM_CELLS_Y, 4])
 
 nu = np.zeros([NUM_CELLS_X, NUM_CELLS_Y], 'd')
 nu_max = np.zeros([NUM_CELLS_X, NUM_CELLS_Y, 4], 'd')
-nu_max_2 = np.zeros([NUM_CELLS_X, NUM_CELLS_Y, 4], 'd')
 
 # Residuals
 R = np.zeros([NUM_CELLS_X, NUM_CELLS_Y, 4], 'd')
