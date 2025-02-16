@@ -286,6 +286,31 @@ def calculate_massflow(rho, u, cell_x_index):
     
     return m
 
+def calculate_pressure_coefficient():
+    """
+    Calculate the pressure coefficient (Cp) on the bottom wall.
+
+    Cp is computed as:
+        Cp = (p - p_mean) / (0.5 * rho_mean * u_mean^2)
+
+    Returns:
+    --------
+    Cp : numpy.ndarray
+        Array containing the pressure coefficient values along the bottom wall.
+    """
+    # Compute mean pressure on the bottom wall
+    inlet_mean_pressure = gv.p[0, :].mean()
+    
+    # Compute mean density and mean velocity
+    inlet_mean_density = gv.rho[0, :].mean()
+    inlet_mean_velocity = gv.u[0, :, 0].mean()
+    
+    # Calculate the pressure coefficient
+    Cp = (gv.p[:, 0] - inlet_mean_pressure) / (0.5 * inlet_mean_density * np.power(inlet_mean_velocity, 2))
+
+    return Cp
+
+
 def get_all_cell_properties():
     """
     Returns the properties (density, velocity, temperature, pressure, etc.) of all cells in the grid
