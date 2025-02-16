@@ -1,4 +1,3 @@
-#%%
 """
 Initialize the mesh for the computational domain.
 
@@ -11,14 +10,13 @@ Notes:
     - The grid alignment and spacing are adjusted based on the bump height (cell_y0 and face_y0).
     - The function modifies global variables directly and does not return any value.
 """
-
 # import modules
 from constants import *
 import global_vars as gv
+
 import numpy as np
 from matplotlib import pyplot as plt
 
-# define the functions
 def get_point_coordinates(cell_x_index, cell_y_index):
     """
     Return the cell coordinates based on the cell indices.
@@ -63,6 +61,15 @@ def get_vertex_coordinates(cell_x_index, cell_y_index, vertex):
         return None
 
 def get_cell_dy(cell_x_index):
+    """
+    Returns the cell height (dy) for a given x-index.
+
+    Args:
+        cell_x_index (int): Index of the cell along the x-axis.
+
+    Returns:
+        float: The height (dy) of the cell at the given index.
+    """
     return gv.cell_dy[cell_x_index]
 
 def get_cell_area(cell_x_index, cell_y_index):
@@ -485,7 +492,7 @@ def initialize():
 
     # Compute the bump height at the center of each cell
     # The bump height, cell_y0, is determined using the get_y0 function
-    gv.cell_y0 = _calculate_bump_height_CArc(gv.cell_x_coords) if gv.useCircularArc else _calculate_bump_height(gv.cell_x_coords)
+    gv.cell_y0 = _calculate_bump_height(gv.cell_x_coords)
 
     # Calculate the grid spacing in the y-direction for each x-coordinate
     # cell_dy is determined by dividing the height above the bump by the number of cells
@@ -515,7 +522,7 @@ def initialize():
 
     # Compute the bump height at the faces of each x-cell
     # Similar to cell_y0, face_y0 adjusts for the domain geometry at the cell faces
-    gv.face_y0 = _calculate_bump_height_CArc(gv.face_x_coords) if gv.useCircularArc else _calculate_bump_height(gv.face_x_coords)
+    gv.face_y0 = _calculate_bump_height(gv.face_x_coords)
 
     # Calculate the grid spacing in the y-direction (at x-coordinates of the faces)
     # The spacing varies depending on the bump height, face_y0
@@ -541,3 +548,8 @@ def initialize():
     _calculate_ndS()
     
     return None
+
+# Select the appropriate function for calculating the bump height (y0).
+# If USE_CIRCULAR_ARC (defined in constants) is True, use the circular arc-based bump height calculation.
+# Otherwise, use the standard bump height calculation.
+_calculate_bump_height = _calculate_bump_height_CArc if USE_CIRCULAR_ARC else _calculate_bump_height
