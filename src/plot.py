@@ -63,7 +63,7 @@ def plot_convergence_history(fig, iteration_dir=OUTPUT_DIR, save_plot=False):
     #----------------------------------------------------------------------------------
 
     # Prepare iteration range
-    iterations = np.arange(0, gv.iteration + 1)
+    iterations = np.arange(0, len(gv.m_in))
     
     # Plot inlet and outlet mass flow
     ax.plot(iterations, gv.m_in[:], 'k', label=r"Inlet mass flow")
@@ -86,7 +86,9 @@ def plot_convergence_history(fig, iteration_dir=OUTPUT_DIR, save_plot=False):
     if save_plot:
         # Save the plot to a file
         fig.savefig(file_path, bbox_inches="tight")
-        print(f"Convergence history plot for iteration {gv.iteration} saved at: {file_path}")
+
+
+        print(f"Convergence history plot for iteration {gv.iteration} saved at: .{os.sep}{io.simplify_file_path(file_path, str(PROJECT_DIR))}")
 
     return None
 
@@ -218,7 +220,7 @@ def plot_cell_data(fig, fluid_property, property_name, acronym = "DEFAULT", iter
     if save_plot:
         # Save the plot to a file
         fig.savefig(file_path, bbox_inches="tight")
-        print(f"Plot saved at: {file_path}")
+        print(f"Plot saved at: .{os.sep}{io.simplify_file_path(file_path, str(PROJECT_DIR))}")
 
     return None
 
@@ -351,7 +353,7 @@ def plot_face_data(fig, fluid_property, property_name, acronym = "DEFAULT", iter
     if save_plot:
         # Save the plot to a file
         fig.savefig(file_path, bbox_inches="tight")
-        print(f"Plot saved at: {file_path}")
+        print(f"Plot saved at: .{os.sep}{io.simplify_file_path(file_path, str(PROJECT_DIR))}")
     return None
 
 def plot_Cp(fig, iteration_dir=OUTPUT_DIR, save_plot=False):
@@ -418,7 +420,7 @@ def plot_Cp(fig, iteration_dir=OUTPUT_DIR, save_plot=False):
     if save_plot:
         # Save the plot to a file
         fig.savefig(file_path, bbox_inches="tight")
-        print(f"Pressure coefficient plot for iteration {gv.iteration} saved at: {file_path}")
+        print(f"Pressure coefficient plot for iteration {gv.iteration} saved at: .{os.sep}{io.simplify_file_path(file_path, str(PROJECT_DIR))}")
 
     if export_in_csv:
         # Save the calculated data as CSV
