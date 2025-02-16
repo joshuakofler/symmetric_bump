@@ -100,6 +100,9 @@ artificial_dissipation = np.zeros([NUM_CELLS_X, NUM_CELLS_Y, 4, 4])
 a_d_coefficient_gamma = np.zeros([NUM_CELLS_X, NUM_CELLS_Y, 4])
 a_d_coefficient_eta = np.zeros([NUM_CELLS_X, NUM_CELLS_Y, 4])
 
+# Pressure sensor 
+nu = np.zeros([NUM_CELLS_X, NUM_CELLS_Y], 'd')
+nu_max = np.zeros([NUM_CELLS_X, NUM_CELLS_Y, 4], 'd')
 
 # ------------------------------ Mass Flow ------------------------------
 # Mass flow at inlet and outlet
@@ -111,3 +114,5 @@ m_out = np.zeros([MAX_ITERATIONS + 1], dtype='d')
 iteration = 0  # Current iteration
 output_iterations = {}  # Output control (e.g., snapshots)
 pvd_entries = []  # PVD file entries for vtk output
+
+sim_dir = OUTPUT_DIR

@@ -8,7 +8,7 @@ import calculate_artificial_dissipation as ad
 # Select the function for updating artificial dissipation based on the flow type.
 # If IS_SUBSONIC (defined in constants), use the subsonic dissipation update function.
 # Otherwise, use the supersonic dissipation update function.
-update_artificial_dissipation = ad.update_artificial_dissipation_subsonic if IS_SUBSONIC else ad.update_artificial_dissipation_supersonic
+update_artificial_dissipation = ad.update_artificial_dissipation_subsonic if USE_SUBSONIC_AD else ad.update_artificial_dissipation_supersonic
 
 def update_flux(s_vector):
     # Update the flux vector components (f) in the x-direction
