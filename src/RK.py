@@ -1,15 +1,18 @@
-# This module implements a Runge-Kutta (RK) scheme to perform a single iteration of the simulation.
-# It updates the state vector through a series of intermediate steps, recalculates residuals, 
-# and updates cell properties, ensuring that the system progresses according to the RK method.
+"""
+This module implements a Runge-Kutta (RK) scheme to perform a single iteration of the simulation.
+It updates the state vector through a series of intermediate steps, recalculates residuals, 
+and updates cell properties, ensuring that the system progresses according to the RK method.
+"""
 
 # Import modules
 from constants import *
 import global_vars as gv
 
 import numpy as np
+
 import cell
-import calculate_residual as cR
 import data_io as io
+from calculate_residual import update_residual
 
 # RK-solution buffer
 Y = np.zeros([NUM_CELLS_X, NUM_CELLS_Y, 4], 'd')
@@ -47,11 +50,12 @@ def run_iteration():
     # Perform the four-step Runge-Kutta time integration
     for step in range(4):
         # Calculate the timestep based on the maximum velocity in the domain
-        _calculate_timestep()
+        #_calculate_timestep()
+        _calculate_local_timestep()
 
         # Vectorized computation of the intermediate solution Y using the RK method
         Y[:, :, :] = (gv.state_vector[:, :, :] 
-                      - (gv.dt / gv.cell_area[:, :, np.newaxis] * RK_ALPHA[step] * gv.R[:, :, :]))
+                      - (gv.dt[:, :, np.newaxis] / gv.cell_area[:, :, np.newaxis] * RK_ALPHA[step] * gv.R[:, :, :]))
 
         # # Compute the intermediate solution Y using the RK method for each cell and conserved variable
         # for i, j in np.ndindex(NUM_CELLS_X, NUM_CELLS_Y):
@@ -64,7 +68,7 @@ def run_iteration():
         cell.update_cell_properties(Y)
 
         # Recalculate residuals based on the updated intermediate conserved variables (Y)
-        cR.update_residual(Y)
+        update_residual(Y)
 
     # After completing all RK steps, overwrite the state vector with the final computed values
     gv.state_vector[:, :, :] = Y[:, :, :]
@@ -96,14 +100,32 @@ def _calculate_timestep():
         in the x and y directions.
 
     Returns:
-    None (The function updates the global variables `gv.dt` and `gv.time`).
+    --------
+    None 
+        (The function updates the global variables `gv.dt` and `gv.time`).
     """
-    
     # Calculate the maximum velocity (umax) and maximum vertical velocity (vmax)
     umax = np.max([np.max(np.abs(gv.u[:, :, 0] + gv.c[:, :])), np.max(np.abs(gv.u[:, :, 0] - gv.c[:, :]))])
     vmax = np.max([np.max(np.abs(gv.u[:, :, 1] + gv.c[:, :])), np.max(np.abs(gv.u[:, :, 1] - gv.c[:, :]))])
 
     # Calculate the time step (dt) based on the CFL condition
-    gv.dt = CFL / (umax / gv.cell_dx + vmax / gv.cell_dy.min())
+    gv.dt[:,:] = CFL / (umax / gv.cell_dx + vmax / gv.cell_dy.min())
 
     return None
+
+def _calculate_local_timestep():
+    """WIP"""
+
+    dSi = 0.5 * (gv.ndS[:,:,1] + gv.ndS[:,:,3])
+
+    u_x = gv.u[:,:,0] + gv.c[:,:]
+    u_y = gv.u[:,:,1] + gv.c[:,:]
+
+    gv.dt[:,:] = CFL * gv.cell_area[:,:] / (np.abs(u_x * dSi[:,:,0]) + np.abs(gv.ndS[:,:,2,0] + u_y * gv.ndS[:,:,2,1]))
+
+    return None
+
+# Select the appropriate function for calculating the time step.
+# If USE_LOCAL_TIME_STEP (defined in constants) is True, use the local time step function.
+# Otherwise, use the global time step function.
+calculate_time_step = _calculate_local_timestep if USE_LOCAL_TIME_STEP else _calculate_timestep
