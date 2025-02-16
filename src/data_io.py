@@ -1,51 +1,115 @@
-# This module handles the data input and output for the project.
-# Specifically, it manages the output of data at designated iteration points
-# to track the simulation progress and store results at key milestones.
-import numpy as np
+"""
+This module manages data input and output for the project.
+It handles saving simulation results at designated iteration points, 
+tracking progress, and storing key milestones for analysis.
+"""
+
 from constants import *
 import global_vars as gv
+import numpy as np
 
-from datetime import datetime
+from datetime import datetime  # Import datetime for timestamping output
 
-import os
-import re
-import vtk
+import os  # Import os for handling file and directory operations
+import glob  # Import glob for finding files using wildcard matching
+import re  # Import re for regular expression operations
+
+import vtk  # Import vtk for handling VTK file operations
+import csv  # Import csv for reading and writing CSV files
+
+# Set a default width for printing dividers
+max_width = 75
+
+def simplify_file_path(file_path, base_path):
+    """Simplify the file path by stripping the base path."""
+    return file_path.replace(base_path, "").lstrip(os.sep)
 
 def clear_folder_structure():
-    # Clear the output folder structure
+    """
+    Clear the folder structure within the output directory (OUTPUT_DIR).
 
+    This function checks if the base directory (OUTPUT_DIR) exists. If it does, it iterates 
+    through all subfolders inside it, deletes the contents of each subfolder, and then removes 
+    the subfolder itself. If OUTPUT_DIR does not exist, the function simply prints a message.
+
+    Note:
+    - This function is recursive and ensures that all nested directories and files are deleted.
+    - It avoids issues with removing non-empty folders by processing directories from the bottom up.
+
+    Returns:
+    None
+    """
     # Check if the base directory exists
     if os.path.exists(OUTPUT_DIR):
-        # Loop through each folder inside the base directory and remove it
+        # Loop through each folder inside the base directory
         for folder in os.listdir(OUTPUT_DIR):
+            # Get the full path to the current folder
             folder_path = os.path.join(OUTPUT_DIR, folder)
+            
+            # Check if the path corresponds to a directory
             if os.path.isdir(folder_path):
-                # Delete the contents of the folder manually
+                # Walk through the directory tree in reverse (bottom-up)
                 for root, dirs, files in os.walk(folder_path, topdown=False):
+                    # Delete all files in the current folder
                     for file in files:
                         file_path = os.path.join(root, file)
-                        os.remove(file_path)
+                        os.remove(file_path)  # Remove the file
+                        print(f"Deleted file: {file_path}")
+
+                    # Delete all subdirectories in the current folder
                     for subdir in dirs:
                         subdir_path = os.path.join(root, subdir)
-                        os.rmdir(subdir_path)
-                os.rmdir(folder_path)  # Remove the now-empty folder
+                        os.rmdir(subdir_path)  # Remove the empty subdirectory
+                        print(f"Deleted subdirectory: {subdir_path}")
+                
+                # Remove the now-empty top-level folder
+                os.rmdir(folder_path)
                 print(f"Deleted folder: {folder_path}")
     else:
-        print(f"The directory {OUTPUT_DIR} does not exist.")
+        # Print a message if the base directory does not exist
+        print(f"[INFO] The directory {OUTPUT_DIR} does not exist.")
 
+    # Print a blank line for spacing in the console
     print("\n")
     return None
 
 def initialize_folder_structure():
-    # Initialize the output folder structure
-    
+    """
+    Initialize the folder structure for storing simulation outputs.
+
+    This function creates a dedicated folder for each iteration specified in the
+    global variable `gv.output_iterations`. The folders are created inside the 
+    simulation directory (`gv.sim_dir`), and a confirmation message is printed 
+    for each folder created. The path displayed in the message is simplified 
+    to show only the relevant portion relative to the project directory.
+
+    Returns:
+    None
+    """
+    global max_width
+
+    # Print the header for folder initialization
+    print("~" * max_width)
+    print("  -- Initialize Folder Structure --  ")
+    print("~" * max_width)
+
     # Create folders for each iteration
     for iteration in gv.output_iterations:
-        folder_name = os.path.join(OUTPUT_DIR, f"{int(iteration)}")
-        os.makedirs(folder_name, exist_ok=True)  # Creates the folder if it doesn't exist
-        print(f"Created folder: {folder_name}")
+        # Construct the folder name based on the iteration number
+        folder_name = os.path.join(gv.sim_dir, f"{int(iteration)}")
+        
+        # Create the folder (if it doesn't already exist)
+        os.makedirs(folder_name, exist_ok=True)
 
-    print("\n")
+        # Simplify the file path for cleaner output display
+        simplified_file_path = simplify_file_path(folder_name, str(PROJECT_DIR))
+
+        # Print a confirmation message for the created folder
+        print(f"Created folder: .{os.sep}{simplified_file_path}")
+
+    # Print a closing divider line
+    print("~" * max_width)
+    
     return None
 
 def save_iteration(iteration):
@@ -189,7 +253,7 @@ def save_iteration(iteration):
     structured_grid.GetFieldData().AddArray(vtk_m_out)
 
     # Create the output directory if it doesn't exist
-    file_path = os.path.join(OUTPUT_DIR, f"{iteration}\{iteration}.vts")
+    file_path = os.path.join(gv.sim_dir, str(iteration), f"{iteration}.vts")
 
     # Save the structured grid to file using vtkXMLStructuredGridWriter
     writer = vtk.vtkXMLStructuredGridWriter()
@@ -207,47 +271,6 @@ def save_iteration(iteration):
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     print_data_save_info(iteration, file_path, file_size, current_time)
-
-    return None
-
-def read_existing_pvd(pvd_filename):
-    if not os.path.exists(pvd_filename):
-        return []
-
-    with open(pvd_filename, "r") as f:
-        content = f.read()
-
-    # Extrahiere vorhandene <DataSet>-Einträge
-    existing_entries = re.findall(r"<DataSet[\s\S]*?/>\s*", content)
-
-    # Falls keine Einträge existieren, gib eine leere Liste zurück
-    if not existing_entries:
-        return []
-
-    # Erster Eintrag bleibt ohne Tab, alle anderen bekommen eine Einrückung
-    gv.pvd_entries.extend([existing_entries[0].strip()] + [f"\t{entry.strip()}" for entry in existing_entries[1:]])
-
-    return None
-
-def save_pvd():
-    """Creates a .pvd file referencing all saved .vtp files."""
-    pvd_content = """<?xml version="1.0"?>
-    <VTKFile type="Collection" version="0.1" byte_order="LittleEndian">
-        <Collection>
-            {}    
-        </Collection>
-    </VTKFile>
-    """.format("\n".join(gv.pvd_entries))  # Ensure entries are correctly indented
-
-
-    # Get the current time
-    current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-
-    pvd_filename = os.path.join(OUTPUT_DIR, f"{current_time}_solution_{NUM_CELLS_X}_{NUM_CELLS_Y}.pvd")
-    with open(pvd_filename, "w") as f:
-        f.write(pvd_content)
-
-    print(f"Saved PVD file: {pvd_filename}")
 
     return None
 
@@ -318,8 +341,12 @@ def read_iteration(file_path):
             return None
         return np.array([vtk_array.GetValue(i) for i in range(vtk_array.GetNumberOfTuples())])
 
-    gv.m_in[:-(MAX_ITERATIONS-gv.iteration)] = extract_field_data("Inlet Massflow")
-    gv.m_out[:-(MAX_ITERATIONS-gv.iteration)] = extract_field_data("Outlet Massflow")
+    if (MAX_ITERATIONS - gv.iteration) == 0:
+        gv.m_in[:] = extract_field_data("Inlet Massflow")
+        gv.m_out[:] = extract_field_data("Outlet Massflow")
+    else:
+        gv.m_in[:-(MAX_ITERATIONS-gv.iteration)] = extract_field_data("Inlet Massflow")
+        gv.m_out[:-(MAX_ITERATIONS-gv.iteration)] = extract_field_data("Outlet Massflow")
 
     # Fill the state vector
     gv.state_vector[:, :, 0] = gv.rho[:,:]
@@ -327,37 +354,194 @@ def read_iteration(file_path):
     gv.state_vector[:, :, 2] = gv.rho[:,:] * gv.u[:,:,1]
     gv.state_vector[:, :, 3] = gv.rho[:,:] * gv.E[:,:]
 
-    print(f"Successfully loaded {file_path} into global variables.")
+    print(f"[INFO] Successfully loaded .{os.sep}{simplify_file_path(file_path, str(PROJECT_DIR))}")
+    print("~" * max_width)
 
     return None
 
-def simplify_file_path(file_path, base_path):
-    """Simplify the file path by stripping the base path."""
-    return file_path.replace(base_path, "").lstrip(os.sep)
+def save_pvd():
+    """
+    Creates and saves a .pvd file that references all saved .vtp files.
+
+    The .pvd file is an XML-based file format used by VTK to manage a collection of 
+    .vtp files (e.g., for visualization or simulation data). This function compiles 
+    all entries from `gv.pvd_entries` into a single .pvd file and saves it in the 
+    simulation directory (`gv.sim_dir`) with a timestamped filename.
+
+    Returns:
+    --------
+    None
+    """
+    global max_width
+
+    # Create the XML content for the .pvd file
+    pvd_content = (
+        """<?xml version="1.0"?>
+<VTKFile type="Collection" version="0.1" byte_order="LittleEndian">
+    <Collection>
+{}
+    </Collection>
+</VTKFile>
+        """.format("\n".join(gv.pvd_entries)))  # Format and join the pvd entries with indentation
+
+    # Get the current timestamp for the filename
+    current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+
+    # Construct the .pvd filename using the current timestamp and simulation parameters
+    pvd_filename = os.path.join(
+        gv.sim_dir, f"{current_time}_solution_{NUM_CELLS_X}_{NUM_CELLS_Y}.pvd"
+    )
+    
+    # Save the .pvd file
+    with open(pvd_filename, "w") as f:
+        f.write(pvd_content)
+
+    # Display a message indicating the data output
+    print("\n")
+    print("~" * max_width)
+    print("  -- Data Output  --  ")
+    print("~" * max_width)
+
+    # Print confirmation of the saved file
+    print(f"\nSaved PVD file: .{os.sep}{simplify_file_path(pvd_filename, str(PROJECT_DIR))}")
+    
+    return None
+
+def read_existing_pvd(pvd_filename=None):
+    """
+    Reads an existing .pvd file to extract and store <DataSet> entries.
+
+    If no filename is provided, this function searches the `sim_dir` directory 
+    for the oldest `.pvd` file and uses it. If no `.pvd` file is found, it returns
+    a warning and exits gracefully.
+
+    Parameters:
+    -----------
+    pvd_filename (str, optional): The path to a specific .pvd file. If not provided,
+                                    the function searches for the oldest `.pvd` file
+                                    in the `sim_dir`.
+
+    Returns:
+    --------
+    None
+    """
+    # Display a message indicating the data read
+    print("\n")
+    print("~" * max_width)
+    print("  -- Read simulation  --  ")
+    print("~" * max_width)
+
+    # If no filename is given, find the oldest .pvd file in the directory
+    if pvd_filename is None:
+        pvd_files = glob.glob(os.path.join(gv.sim_dir, "*.pvd"))
+        
+        if not pvd_files:
+            print(f"[WARNING] No .pvd files found in directory:\n          .{os.sep}{simplify_file_path(pvd_filename, str(PROJECT_DIR))}")
+            return None
+        
+        # Sort files by creation time and pick the oldest one
+        pvd_filename = max(pvd_files, key=os.path.getctime)
+        print(f"[INFO] No filename provided. Using the oldest file:\n       .{os.sep}{simplify_file_path(pvd_filename, str(PROJECT_DIR))}")
+
+    # Check if the specified or discovered file exists
+    if not os.path.exists(pvd_filename):
+        print(f"[WARNING] PVD file '{pvd_filename}' does not exist.")
+        return None
+
+    # Read the content of the .pvd file
+    with open(pvd_filename, "r") as f:
+        content = f.read()
+
+    # Use a regular expression to extract all <DataSet> entries
+    existing_entries = re.findall(r"<DataSet[\s\S]*?/>\s*", content)
+
+    # If no entries are found, issue a warning and return an empty list
+    if not existing_entries:
+        print(f"[WARNING] No <DataSet> entries found in '{pvd_filename}'.")
+        return None
+
+    # Add the first entry as-is (without indentation), and indent subsequent entries
+    gv.pvd_entries.extend(
+        [existing_entries[0].strip()] + [f"\t{entry.strip()}" for entry in existing_entries[1:]]
+    )
+
+    print("-" * max_width)
+
+    return None
+
+def save_two_arrays_in_csv(x, data, x_header, data_header, iteration_dir=OUTPUT_DIR):
+    """
+    Saves two 1D arrays (x and corresponding data) to a CSV file.
+
+    Parameters:
+    -----------
+    x : 1D array (list or np.ndarray)
+        The array of x values (e.g., spatial coordinates).
+    data : 1D array (list or np.ndarray)
+        The array of data values (e.g., Cp, velocity, etc.) corresponding to the x values.
+    x_header : str
+        The header for the x-values column.
+    data_header : str
+        The header for the data-values column.
+    iteration_dir : str, optional
+        The directory where the file will be saved. Defaults to OUTPUT_DIR.
+    
+    Returns:
+    --------
+    None
+    """
+    # Ensure the input arrays are 1D (single rows of data)
+    if len(x.shape) != 1 or len(data.shape) != 1:
+        raise ValueError("Both input arrays must be 1D (single rows of data).")
+    
+    # Check if both arrays have the same length
+    if len(x) != len(data):
+        raise ValueError("The two arrays must have the same length.")
+    
+    file_path = os.path.join(iteration_dir, f"{gv.iteration}_{data_header}_{NUM_CELLS_X}_{NUM_CELLS_Y}.csv")
+
+    # Save the arrays to a CSV file
+    with open(file_path, mode='w', newline='') as file:
+        writer = csv.writer(file)
+        
+        # Write the header
+        writer.writerow([x_header, data_header])
+        
+        # Write the data
+        for x, data in zip(x, data):
+            writer.writerow([x, data])
+    
+    print(f"Data has been exported to {file_path}")
+    return None
 
 def print_data_save_info(iteration, file_path, file_size, current_time):
-    # Simplify the file path by removing the base path part
+    """
+    Display information about a successfully saved data file.
+
+    Parameters:
+    iteration (int): The current iteration number.
+    file_path (str): The full path to the saved file.
+    file_size (float): The size of the saved file in bytes.
+    current_time (str): The timestamp when the file was saved.
+    """
+    global max_width
+
+    # Simplify the file path relative to the project directory
     simplified_file_path = simplify_file_path(file_path, str(PROJECT_DIR))
-    
-    # Calculate the maximum width for the divider lines based on the simplified file path
-    max_width = 50
-    
+
     print("\n")
-    # Print the divider line
+    # Print header with divider lines
     print("~" * max_width)
     print("  -- Data Saved Successfully --  ")
     print("~" * max_width)
 
-    # Print iteration information
-    print("Iteration Information")
+    # Print details of the saved file
+    print("Details")
     print("-" * max_width)
-    print(f" Iteration:         {iteration}")
-    
-    # Print the simplified file path
-    print(f" File Path:        {simplified_file_path}")
-    
-    print(f" File Size:        {file_size / 1024:.2f} KB")  # Size in KB
-    print(f" Timestamp:        {current_time}")
+    print(f" Iteration:\t\t{iteration}")
+    print(f" File Path:\t\t.{os.sep}{simplified_file_path}")
+    print(f" File Size:\t\t{file_size / 1024:.2f} KB")  # Convert size to KB
+    print(f" Timestamp:\t\t{current_time}")
     print("~" * max_width)
 
 def print_iteration_residual(iteration, R_start, R_final):
@@ -369,8 +553,7 @@ def print_iteration_residual(iteration, R_start, R_final):
     R_start (dict): Residuals at the start of the iteration (keys: 'rho', 'qux', 'quy', 'qE').
     R_final (dict): Residuals at the end of the iteration (keys: 'rho', 'qux', 'quy', 'qE').
     """
-    # Maximum width for divider lines
-    max_width = 50
+    global max_width
 
     print("\n")
     # Print the divider line
@@ -382,24 +565,90 @@ def print_iteration_residual(iteration, R_start, R_final):
     print("Residual Information")
     print("-" * max_width)
 
-    # Print residuals at the start
+    # Print maximum residuals at the start
     print(" Start Residuals:")
-    print(f"   rho:  {R_start[0]:.5e}")
-    print(f"   qux:  {R_start[1]:.5e}")
-    print(f"   quy:  {R_start[2]:.5e}")
-    print(f"   qE:   {R_start[3]:.5e}")
-    
+    print(r"   ρ:   {:.5e}".format(R_start[0]))
+    print(r"   ρu:  {:.5e}".format(R_start[1]))
+    print(r"   ρv:  {:.5e}".format(R_start[2]))
+    print(r"   ρE:  {:.5e}".format(R_start[3]))
     # Print a separator
     print("-" * max_width)
 
-    # Print residuals at the end
+    # Print maximum residuals at the end
     print(" Final Residuals:")
-    print(f"   rho:  {R_final[0]:.5e}")
-    print(f"   qux:  {R_final[1]:.5e}")
-    print(f"   quy:  {R_final[2]:.5e}")
-    print(f"   qE:   {R_final[3]:.5e}")
+    print(r"   ρ:   {:.5e}".format(R_final[0]))
+    print(r"   ρu:  {:.5e}".format(R_final[1]))
+    print(r"   ρv:  {:.5e}".format(R_final[2]))
+    print(r"   ρE:  {:.5e}".format(R_final[3]))
 
     # Print a closing divider
     print("~" * max_width)
     
+    return None
+
+def print_simulation_info():
+    """
+    Print the initial simulation parameters to the console in a well-formatted way.
+
+    Parameters:
+    -----------
+    sim_dir (str): Directory where the simulation output files will be saved.
+
+    Returns:
+    --------
+    None
+    """
+    global max_width
+    
+    simplified_file_path = simplify_file_path(str(gv.sim_dir), str(PROJECT_DIR))
+
+    # Print the divider line
+    print("~" * max_width)
+    print(f"  -- Simulation Info --  ")
+    print("~" * max_width)
+
+    # Print simulation metadata
+    print("Simulation Metadata")
+    print("-" * max_width)
+
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    # Print the simulation information with aligned columns
+    print(f"{' Iteration:':<20} {gv.iteration:<30}")
+    print(f"{' Output Directory:':<20} .{os.sep}{simplified_file_path:<30}")
+    print(f"{' Timestamp:':<20} {timestamp:<30}")
+
+    print("-" * max_width)
+
+    # Print computational grid information
+    print("Computational Grid")
+    print("-" * max_width)
+    print(f" Number of Cells in X-Direction: {NUM_CELLS_X}")
+    print(f" Number of Cells in Y-Direction: {NUM_CELLS_Y}")
+    
+    print("-" * max_width)
+
+    # Print geometry information
+    print("Geometry Information")
+    print("-" * max_width)
+    if USE_CIRCULAR_ARC:
+        print(" Bump Shape: Circular Arc")
+    else:
+        print(" Bump Shape: Custom Function")
+
+    print("-" * max_width)
+
+    # Print simulation settings
+    print("Simulation Settings")
+    print("-" * max_width)
+    print(f" Maximum Iterations: {MAX_ITERATIONS}")
+    if USE_SUBSONIC_AD:
+        print(" Artificial Dissipation: Advanced (valid for shocks)")
+    else:
+        print(" Artificial Dissipation: Standard (subsonic)")
+
+    # Print a closing divider
+    print("~" * max_width)
+    print("\n")
+
     return None
