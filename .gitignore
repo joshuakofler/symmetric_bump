@@ -10,6 +10,7 @@ src/__pycache__/plot.cpython-312.pyc
 src/__pycache__/RK.cpython-312.pyc
 
 results/complete_convergence_history/*
+src_modified/*
 
 output/*
 src/test_plot.py
