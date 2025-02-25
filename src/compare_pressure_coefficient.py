@@ -81,18 +81,18 @@ def plot_Cp_comparison(file1, file2, parent_directory="OUTPUT_DIR"):
     ax.grid(True, which='both', linestyle='--', linewidth=0.5)
 
     # Save the plot as a PDF file
-    fig.savefig(f"Comparison_{M}_Cp.pdf", bbox_inches="tight")
+    fig.savefig(f"..//results//Comparison_{M}_Cp.pdf", bbox_inches="tight")
 
     return None
 
-M = "M_0_85" # Define Mach number (M)
+M = "M_0_2" # Define Mach number (M)
 
-iteration1 = 3000  # Iteration number for the first file
-iteration2 = 12000  # Iteration number for the second file
+iteration1 = 5000  # Iteration number for the first file
+iteration2 = 10000  # Iteration number for the second file
 
 # Example usage: File names for comparison (adjust paths as needed)
-file1 = f"..//results//bump_0_08//{M}//{iteration1}_Cp_65_33.csv"
-file2 = f"..//results//bump_0_08//{M}_fine//{iteration2}_Cp_225_113.csv"
+file1 = f"..//results//bump_0_08//{M}//{iteration1}//{iteration1}_Cp_65_33.csv"
+file2 = f"..//results//bump_0_08//{M}_fine//{iteration2}//{iteration2}_Cp_225_113.csv"
 
 # Plot the comparison of Cp values from both files
 plot_Cp_comparison(file1, file2, parent_directory=RESULT_DIR)
